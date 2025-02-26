@@ -1,4 +1,5 @@
 #include <Wire.h>
+#include "ultrasonic.h"
 
 // Task IDs corresponding to drivetrain movement (used by I2C messaging)
 #define FORWARD  1
@@ -20,6 +21,10 @@ struct i2c_payload {
 static i2c_payload tx_data; 
 
 
+// TEST FOR ULTRASONIC 
+Ultrasonic us1(8, 7);
+
+
 /* Sends TX to slave given a drivetrain task id, speed, and angle. */
 void command_slave(uint8_t task_id, uint8_t speed = 100, uint8_t angle = 0) {
     Wire.beginTransmission(SLAVE_ADDR);
@@ -37,6 +42,10 @@ void setup() {
 }
 
 void loop() {
+    // test command for ultrasonic sensor  
+    float us1_dist = us1.distance();
+    Serial.println(us1_dist); 
+    delay(3000);
 
     // simple test sequence sending drivetrain commands to slave 
     Serial.println("NEW COMMAND SEQUENCE");
