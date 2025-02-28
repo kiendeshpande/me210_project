@@ -13,7 +13,9 @@
 
 #define SLAVE_ADDR 9  
 
-#define SERVO_PIN 8
+#define SERVO_PIN 8 
+#define US1_TRIG 6
+#define US1_ECHO 7
 
 // i2c TX sent as a struct with required data for one drivetrain command
 // this includes the task_id (forward, backward, etc.) and required arguments (speed and angle)
@@ -36,23 +38,25 @@ void command_slave(uint8_t task_id, uint8_t speed = 100, uint8_t angle = 0) {
 
 // Initialize objects 
 Payload p1(SERVO_PIN);
+Ultrasonic us1(US1_TRIG, US1_ECHO);
 
 void setup() {
     Wire.begin();  // start i2c bus as master 
     p1.begin();  // initialize payload 
+    us1.begin();  // initialize us1 
 
     Serial.begin(9600);
 }
 
 void loop() {
-    // // test command for ultrasonic sensor  
-    // // float us1_dist = us1.distance();
-    // // Serial.println(us1_dist); 
-    // // delay(3000);
-    // p1.release(0);
-    // delay(1000);
-    // p1.release(180);
-    // delay(1000);
+    // test command for ultrasonic sensor  
+    float us1_dist = us1.distance();
+    Serial.println(us1_dist); 
+    delay(3000);
+    p1.release();
+    delay(1000);
+    p1.release();
+    delay(1000);
 
 
     // simple test sequence sending drivetrain commands to slave 

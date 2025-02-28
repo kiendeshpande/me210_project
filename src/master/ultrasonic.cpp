@@ -8,12 +8,14 @@ Supports triggering a pulse and calculating distance, in cm, from the echo.
 
 
 Ultrasonic::Ultrasonic(uint8_t trigger_pin, uint8_t echo_pin) 
-    : trigger_pin(trigger_pin), echo_pin(echo_pin) {
+    : trigger_pin(trigger_pin), echo_pin(echo_pin) {}
+
+
+void Ultrasonic::begin() {
     pinMode(trigger_pin, OUTPUT); 
     pinMode(echo_pin, INPUT);   
     digitalWrite(trigger_pin, LOW); // init trigger pin to LOW
 }
-
 
 /* Returns distance in centimeters from sensor to detected object. */
 float Ultrasonic::distance() {
@@ -30,5 +32,5 @@ float Ultrasonic::distance() {
 	if (distance > max_distance) 
 		return -1.0;
 
-	return distance; 
+	return duration; 
 }

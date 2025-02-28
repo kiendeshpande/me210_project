@@ -16,5 +16,6 @@ class Ultrasonic {
 
 	public:
 		Ultrasonic(uint8_t trigger_pin, uint8_t echo_pin); 
+    void begin();
 		float distance(); 
 };
