@@ -2,7 +2,8 @@
 #include "drivetrain.h"
 
 // pin instantiation below reflects test wiring (not Chris' schematic)
-// this will be changed during integration
+// this can be changed during integration if required 
+// enable pins must have same PWM frequency, pins 11,10,3,9 all 490Hz 
 #define M1_INA 7
 #define M1_INB 8
 #define M1_EN 11
@@ -16,16 +17,16 @@
 #define M3_EN 3
 
 #define M4_INA 6
-#define M4_INB 9
-#define M4_EN 5
+#define M4_INB 5
+#define M4_EN 9
 
 // Task IDs corresponding to drivetrain movement (used by I2C messaging)
 #define FORWARD  1
 #define BACKWARD 2
 #define LEFT     3
 #define RIGHT    4
-#define ROT_CW   5
-#define ROT_CCW  6
+#define ROT_CW   5  // TO DO: implement rotation in drivetrain.cpp / .h
+#define ROT_CCW  6  // TO DO: implement rotation in drivetrain.cpp / .h
 #define STOP     7
 
 #define I2C_SLAVE_ADDR 9
@@ -78,11 +79,16 @@ void process_task() {
             chassis.stop();
             break;
         default:
-            Serial.println("INVALID TASK ID");
+            // TO DO: decide on case in default behavior (do nothing is a good option, to keep current command)
+            // default case should only hit in the case i2c message is corrupted (task_id corrupted) or invalid task_id passed in
+            Serial.println("INVALID TASK ID"); 
             break;
     }
 }
 
+/* Handler function reads the RX line each time a new message is available. The 3-byte message 
+is parsed into the rx_data struct, which always contains most up-to-date drivetrain command. 
+Once the handler processes the I2C message, the new task is executed (once only) */
 void receiveEvent(int num_bytes) {
     if (num_bytes == sizeof(i2c_payload)) {
         byte* ptr = (byte*) &rx_data; // update rx_data struct with new information 

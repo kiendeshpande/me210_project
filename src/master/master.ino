@@ -1,15 +1,21 @@
 #include <Wire.h>
+#include "ultrasonic.h"
+#include "payload.h"
 
 // Task IDs corresponding to drivetrain movement (used by I2C messaging)
 #define FORWARD  1
 #define BACKWARD 2
 #define LEFT     3
 #define RIGHT    4
-#define ROT_CW   5
-#define ROT_CCW  6
+#define ROT_CW   5  // TO DO: implement rotation in drivetrain.cpp / .h
+#define ROT_CCW  6. // TO DO: implement rotation in drivetrain.cpp / .h
 #define STOP     7
 
-#define SLAVE_ADDR 9  
+#define SLAVE_ADDR 9 
+
+#define SERVO_PIN 8 
+#define US1_TRIG 6
+#define US1_ECHO 7
 
 // i2c TX sent as a struct with required data for one drivetrain command
 // this includes the task_id (forward, backward, etc.) and required arguments (speed and angle)
@@ -30,69 +36,46 @@ void command_slave(uint8_t task_id, uint8_t speed = 100, uint8_t angle = 0) {
     Wire.endTransmission();
 }
 
+// Initialize objects 
+Payload p1(SERVO_PIN);
+Ultrasonic us1(US1_TRIG, US1_ECHO);
 
 void setup() {
     Wire.begin();  // start i2c bus as master 
+    p1.begin();  // initialize payload 
+    us1.begin();  // initialize us1 
+
     Serial.begin(9600);
 }
 
 void loop() {
+    // simple test for ultrasonic sensor  
+    float us1_dist = us1.distance();
+    Serial.println("US1 distance in cm is:");
+    Serial.println(us1_dist); 
+    delay(1000);
+
+    // simple test servo release (open and close)
+    p1.release();
+    delay(1000);
 
     // simple test sequence sending drivetrain commands to slave 
-    Serial.println("NEW COMMAND SEQUENCE");
-    command_slave(FORWARD, 100); 
-    delay(5000);
-    command_slave(BACKWARD, 100); 
-    delay(5000);
-    command_slave(LEFT, 100); 
-    delay(5000);
-    command_slave(RIGHT, 100); 
-    delay(5000);
-    command_slave(STOP, 100); 
-    delay(5000);
+    command_slave(FORWARD, 180); 
+    delay(3000);
+    command_slave(STOP); 
+    delay(2000);
+    command_slave(BACKWARD, 180); 
+    delay(3000);
+    command_slave(STOP); 
+    delay(2000);
+    command_slave(LEFT, 180); 
+    delay(3000);
+    command_slave(STOP); 
+    delay(2000);
+    command_slave(RIGHT, 180); 
+    delay(3000);
+    command_slave(STOP); 
+    delay(2000);
 }
 
 
-// --------------------------------------
-
-// void setup() {
-//   // Gather Orientation
-// }
-
-// void loop() {
-//   // dominate
-
-// }
-
-// void orient_self() {
-//   // Turn steadily clockwise until minimum values are found
-//   // Maybe turn back the other way to make sure we didn't overshoot?
-// }
-
-// void gather_pot() {
-//   //Drive forward 6 inches
-//   // drive right until 2 inches from right wall
-//   // drive forward until full distance from wall
-//   // drive left until pot is in on burner
-// }
-
-// void trigger_burner_to pantry() {
-//   // back up
-//   // extend appendage
-//   // drive left until the wall
-//   // drive right until 4 inches from the wall
-//   // begin power to flywheel
-//   // drive back 12 inches
-// }
-
-// void ready_aim_fire() {
-//   // maybe rotate some amount? (Or built the cannon at a controllable angle)
-//   // start cannon feed motor
-//   // repeat until we need to finish
-// }
-
-// void return_pot() {
-//   // disengage burner
-//   // drag pot back
-//   // boogie_time()
-// }
