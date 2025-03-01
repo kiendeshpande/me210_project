@@ -6,6 +6,8 @@ motor is an instance of the Motor class (motor.h).
 The robot uses Mecanum wheels. Because of this, the chassis can move in 
 the following ways: forward, backward, laterally, rotate, and stop. 
 
+Motor orientation below is when viewing robot with underside facing up. 
+Current motors have physical markings. 
 Motor 1 is the front left 
 Motor 2 is the front right
 Motor 3 is the back left
@@ -59,7 +61,7 @@ class Drivetrain {
         void backward(uint8_t speed = 100); 
         void left(uint8_t speed = 100); 
         void right(uint8_t speed = 100); 
-        void rot_cw(uint8_t speed = 100, uint8_t angle = 90);  // TO DO: fully implement this once chassis assembled 
-        void rot_ccw(uint8_t speed = 100, uint8_t angle = 90); // TO DO: fully implement this once chassis assembled
+        void rot_cw(uint8_t speed = 100, uint8_t angle = 90);  // TO DO: fully implement rotation once chassis assembled 
+        void rot_ccw(uint8_t speed = 100, uint8_t angle = 90); // TO DO: fully implement rotation once chassis assembled
         void stop(); 
 };

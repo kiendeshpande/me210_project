@@ -11,6 +11,7 @@ Ultrasonic::Ultrasonic(uint8_t trigger_pin, uint8_t echo_pin)
     : trigger_pin(trigger_pin), echo_pin(echo_pin) {}
 
 
+/* Called during setup to initialize ultrasonic pins */
 void Ultrasonic::begin() {
     pinMode(trigger_pin, OUTPUT); 
     pinMode(echo_pin, INPUT);   
@@ -23,6 +24,9 @@ float Ultrasonic::distance() {
 	delayMicroseconds(10);  // pin must be high for at least 10us to send pulse
 	digitalWrite(trigger_pin, LOW); 
 
+
+  // As far as Kien tested... the US sensor works with current code 
+  // but if we encounter US issues during integration we can consider the TO DOs below
 	// TO DO: test pulseIn() and pulseInLong() with/without interrupts on/off
 	// TO DO: test whether timeout should be used 
 	unsigned long duration = pulseIn(echo_pin, HIGH); 
@@ -32,5 +36,5 @@ float Ultrasonic::distance() {
 	if (distance > max_distance) 
 		return -1.0;
 
-	return duration; 
+	return distance; 
 }

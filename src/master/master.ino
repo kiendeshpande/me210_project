@@ -7,11 +7,11 @@
 #define BACKWARD 2
 #define LEFT     3
 #define RIGHT    4
-#define ROT_CW   5
-#define ROT_CCW  6
+#define ROT_CW   5  // TO DO: implement rotation in drivetrain.cpp / .h
+#define ROT_CCW  6. // TO DO: implement rotation in drivetrain.cpp / .h
 #define STOP     7
 
-#define SLAVE_ADDR 9  
+#define SLAVE_ADDR 9 
 
 #define SERVO_PIN 8 
 #define US1_TRIG 6
@@ -49,33 +49,32 @@ void setup() {
 }
 
 void loop() {
-    // test command for ultrasonic sensor  
+    // simple test for ultrasonic sensor  
     float us1_dist = us1.distance();
+    Serial.println("US1 distance in cm is:");
     Serial.println(us1_dist); 
-    delay(3000);
-    p1.release();
-    delay(1000);
-    p1.release();
     delay(1000);
 
+    // simple test servo release (open and close)
+    p1.release();
+    delay(1000);
 
     // simple test sequence sending drivetrain commands to slave 
-    Serial.println("NEW COMMAND SEQUENCE");
     command_slave(FORWARD, 180); 
     delay(3000);
-    command_slave(STOP, 180); 
+    command_slave(STOP); 
     delay(2000);
     command_slave(BACKWARD, 180); 
     delay(3000);
-    command_slave(STOP, 180); 
+    command_slave(STOP); 
     delay(2000);
     command_slave(LEFT, 180); 
     delay(3000);
-    command_slave(STOP, 180); 
+    command_slave(STOP); 
     delay(2000);
     command_slave(RIGHT, 180); 
     delay(3000);
-    command_slave(STOP, 180); 
+    command_slave(STOP); 
     delay(2000);
 }
 
