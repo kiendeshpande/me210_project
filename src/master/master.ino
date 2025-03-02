@@ -62,13 +62,25 @@ void command_slave(uint8_t task_id, uint8_t speed = 100, uint8_t angle = 0) {
 typedef enum {
     STATE_START, STATE_ORIENT, STATE_FWD_1, STATE_RIGHT, STATE_FWD_2, 
     STATE_INSIDE_LEFT, STATE_OUTSIDE_LEFT_1, STATE_INSIDE_BACK, 
-    STATE_OUTSIDE_BACK, STATE_OUTSIDE_LEFT_2, STATE_IGNITE, STATE_FWD, STATE_DROP
+    STATE_OUTSIDE_BACK, STATE_OUTSIDE_LEFT_2, STATE_IGNITE, STATE_FWD_3, STATE_DROP
   } States_t;
   
 /*---------------Module Variables---------------------------*/
 States_t state;
 float us_front_dist, us_back_dist, us_right_dist, us_left1_dist, us_left2_dist;
 uint16_t IR_value;
+
+bool beacon_sensed = false;
+bool command_right_sent = false;
+bool command_fwd1_sent = false;
+bool command_fwd2_sent = false;
+bool command_inside_left_sent = false;
+bool command_outside_left1_sent = false;
+bool command_inside_back_sent = false;
+bool command_outside_back_sent = false;
+bool command_outside_left2_sent = false;
+bool command_fwd3_sent = false;
+
 
 // Initialize objects 
 Payload p1(SERVO_DROP_PIN);
@@ -129,7 +141,7 @@ void loop() {
       case STATE_IGNITE:            // Hit ignite button
         handleIgnite();
         break;
-      case STATE_FWD:               // Forward to drop ingredient 
+      case STATE_FWD_3:               // Forward to drop ingredient 
         handleFwd();
         break;
       case STATE_DROP:              // Drop ingredient
@@ -161,7 +173,7 @@ void checkGlobalEvents(void) {
                (state == STATE_OUTSIDE_LEFT_2)) {
         // ping only left US sensor
         // TODO: read both or just one of left US
-        us_left_dist = us_left1.distance();
+        us_left1_dist = us_left1.distance();
     } else if ((state == STATE_FWD_1) || 
                (state == STATE_FWD_2) || 
                (state == STATE_INSIDE_BACK) || 
@@ -175,9 +187,171 @@ void checkGlobalEvents(void) {
   }
 
 
+// Handler for start state --> check start time and lower flag
+void handleStart(void) {
+    // TODO: Implement servo action
+    // Blocking code is probably fine here
+}
+
+
+// Handler for when bot is moving fwd out of start zone 
+void handleFwd1(void) {
+    // Move fwd
+    if (!command_fwd1_sent) {
+        command_slave(FORWARD, 180); 
+        command_fwd1_sent = true;
+    }
+    // Check distance
+    if (us_front_dist < 13) {       // TODO: calibrate distance on course
+        state = STATE_RIGHT;
+        command_slave(STOP);
+    }
+}
+
+
+// Handler for when bot is moving right along the kitchen 
+// and searching for right wall or IR beacon
 void handleRight(void) {
-    // move right
-    if ((us_right_dist < 13) || (IR_mapped > BEACON_THRESHOLD)) {
+    // Move right
+    if (!command_right_sent) {
+        command_slave(RIGHT, 180); 
+        command_right_sent = true;
+    }
+    // Check distance
+    if (us_right_dist < 13) {       // TODO: calibrate distance on course
         state = STATE_FWD_2;
+        command_slave(STOP);
+    } 
+    // Check beacon
+    if (IR_value > BEACON_THRESHOLD) {
+        beacon_sensed = true;
+        state = STATE_FWD_2;
+        command_slave(STOP);  
     }
 }   
+
+
+// Handler for when bot is moving fwd to push pot
+void handleFwd2(void) {
+    // Move forward
+    if (!command_fwd2_sent) {
+        command_slave(FORWARD, 180); 
+        command_fwd2_sent = true;
+    }
+    // Check distance
+    if (us_front_dist < 7) {       // TODO: calibrate distance on course
+        if (beacon_sensed) {
+            state = STATE_INSIDE_LEFT;
+            beacon_sensed = false;
+        } else {
+            state = STATE_OUTSIDE_LEFT_1;
+        }
+        command_slave(STOP);
+    }
+}
+
+
+// Handler for when bot is pushing pot INSIDE the handles,
+// sensing left wall will be closer than when outside handles
+void handleInsideLeft(void) {
+    // Move left
+    if (!command_inside_left_sent) {
+        command_slave(LEFT, 180); 
+        command_inside_left_sent = true;
+    }
+    // Check distance
+    if (us_left1_dist < 7) {        // TODO: calibrate distance on course
+        state = STATE_INSIDE_BACK;
+        command_slave(STOP);
+    }
+}  
+
+
+// Handler for when bot is pushing pot OUTSIDE the handles,
+// sensing left wall will be further than when inside handles
+void handleOutsideLeft1(void) {
+    // Move left
+    if (!command_outside_left1_sent) {
+        command_slave(LEFT, 180); 
+        command_outside_left1_sent = true;
+    }
+    // Check distance
+    if (us_left1_dist < 13) {       // TODO: calibrate distance on course
+        state = STATE_OUTSIDE_BACK;
+        command_slave(STOP);
+    }
+} 
+
+
+// Handler for when bot is backing out of handles
+void handleInsideBack(void) {
+    // Move backwards
+    if (!command_inside_back_sent) {
+        command_slave(BACKWARD, 180); 
+        command_inside_back_sent = true;
+    }
+    // Check distance
+    if (us_front_dist > 13) {        // TODO: calibrate distance on course
+        state = STATE_IGNITE;
+        command_slave(STOP);
+    }
+}  
+
+
+// Handler for when bot is backing up when outside of handles
+void handleOutsideBack(void) {
+    // Move backwards
+    if (!command_outside_back_sent) {
+        command_slave(BACKWARD, 180); 
+        command_outside_back_sent = true;
+    }
+    // Check distance
+    if (us_front_dist > 13) {        // TODO: calibrate distance on course
+        state = STATE_OUTSIDE_LEFT_2;
+        command_slave(STOP);
+    }
+}  
+
+
+// Handler for when bot is going left to ignite
+void handleOutsideLeft2(void) {
+    // Move left
+    if (!command_outside_left2_sent) {
+        command_slave(LEFT, 180); 
+        command_outside_left2_sent = true;
+    }
+    // Check distance
+    if (us_left1_dist < 7) {       // TODO: calibrate distance on course
+        state = STATE_IGNITE;
+        command_slave(STOP);
+    }
+} 
+
+
+// Handler for pushing ignite button
+void handleIgnite(void) {
+    // TODO: Implement servo action
+    // Blocking code is probably fine here
+} 
+
+
+// Handler for when bot is moving fwd to drop ball into pot
+void handleFwd3(void) {
+    // Move forward
+    if (!command_fwd3_sent) {
+        command_slave(FORWARD, 180); 
+        command_fwd3_sent = true;
+    }
+    // Check distance
+    if (us_front_dist < 7) {       // TODO: calibrate distance on course
+        state = STATE_DROP;
+        command_slave(STOP);
+    }
+}
+
+
+// Handler for dropping ingredient into pot
+void handleDrop(void) {
+    // TODO: Implement servo action
+    // Blocking code is probably fine here
+}
