@@ -79,3 +79,100 @@ void loop() {
 }
 
 
+
+
+
+
+
+/*---------------State Definitions--------------------------*/
+typedef enum {
+    STATE_START, STATE_ORIENT, STATE_FWD_1, STATE_RIGHT, STATE_FWD_2, 
+    STATE_INSIDE_LEFT, STATE_OUTSIDE_LEFT_1, STATE_INSIDE_BACK, 
+    STATE_OUTSIDE_BACK, STATE_OUTSIDE_LEFT_2, STATE_IGNITE, STATE_FWD, STATE_DROP
+  } States_t;
+  
+  /*---------------Module Variables---------------------------*/
+  States_t state;
+
+void loop() {
+    checkGlobalEvents();
+    switch (state) {
+      case STATE_START:             // Start of round
+        handleStart();
+        break;
+      case STATE_ORIENT:            // Orientation
+        handleOrient();
+        break;
+      case STATE_FWD_1:             // Forward to clear kitchen
+        handleFwd1();
+        break;
+      case STATE_RIGHT:             // Right until pot or wall
+        handleRight();
+        break;
+      case STATE_FWD_2:             // FWD to push pot
+        handleFwd2();
+        break;
+      case STATE_INSIDE_LEFT:       // Move left and push pot when inside handles 
+        handleInsideLeft();
+        break;
+      case STATE_OUTSIDE_LEFT_1:    // Move left and push pot when outside handles
+        handleOutsideLeft1();
+        break;
+      case STATE_INSIDE_BACK:       // Back out of pot to ignite
+        handleInsideBack();
+        break;
+      case STATE_OUTSIDE_BACK:      // Back out of pushing handles
+        handleOutsideBack();
+        break;
+      case STATE_OUTSIDE_LEFT_2:    // Left until able to ignite
+        handleOutsideLeft2();
+        break;
+      case STATE_IGNITE:            // Hit ignite button
+        handleIgnite();
+        break;
+      case STATE_FWD:               // Forward to drop ingredient 
+        handleFwd();
+        break;
+      case STATE_DROP:              // Drop ingredient
+        handleDrop();
+        break;
+      default:    // Should never get into an unhandled state
+        Serial.println("What is this I do not even...");
+    }
+  }
+
+
+
+
+// Handler for global events & responses
+void checkGlobalEvents(void) {
+    if (state == STATE_ORIENT) {
+        // ping all US sensors
+    } else if (state == STATE_RIGHT) {
+        // ping only right US sensor
+        // analog read beacon sensor
+        if ((us_right.distance() < 13) || (analogRead(IR_PIN) < BEACON_THRESHOLD)) {
+            state = STATE_FWD_2;
+            break;
+        }
+    } else if ((state == STATE_INSIDE_LEFT) || 
+               (state == STATE_OUTSIDE_LEFT_1) || 
+               (state == STATE_OUTSIDE_LEFT_2)) {
+        // ping only left US sensor
+    } else if ((state == STATE_FWD_1) || 
+               (state == STATE_FWD_2) || 
+               (state == STATE_INSIDE_BACK) || 
+               (state == STATE_OUTSIDE_BACK) || 
+               (state == STATE_DROP)) {
+        // ping only front US sensor
+    } else {
+        break;
+    }
+  }
+
+
+void handleRight(void) {
+    // move right
+    // if (IR beacon sensed) OR (right US < 5 inches)
+        // state = STATE_FWD_2
+}
