@@ -14,8 +14,11 @@
 #define SLAVE_ADDR 9 
 
 #define SERVO_PIN 8 
-#define US1_TRIG 6
-#define US1_ECHO 7
+#define US_R_TRIG 6
+#define US_R_ECHO 7
+#define IR_PIN A0
+
+#define BEACON_THRESHOLD 3.3
 
 // i2c TX sent as a struct with required data for one drivetrain command
 // this includes the task_id (forward, backward, etc.) and required arguments (speed and angle)
@@ -36,53 +39,6 @@ void command_slave(uint8_t task_id, uint8_t speed = 100, uint8_t angle = 0) {
     Wire.endTransmission();
 }
 
-// Initialize objects 
-Payload p1(SERVO_PIN);
-Ultrasonic us1(US1_TRIG, US1_ECHO);
-
-void setup() {
-    Wire.begin();  // start i2c bus as master 
-    p1.begin();  // initialize payload 
-    us1.begin();  // initialize us1 
-
-    Serial.begin(9600);
-}
-
-void loop() {
-    // simple test for ultrasonic sensor  
-    float us1_dist = us1.distance();
-    Serial.println("US1 distance in cm is:");
-    Serial.println(us1_dist); 
-    delay(1000);
-
-    // simple test servo release (open and close)
-    p1.release();
-    delay(1000);
-
-    // simple test sequence sending drivetrain commands to slave 
-    command_slave(FORWARD, 180); 
-    delay(3000);
-    command_slave(STOP); 
-    delay(2000);
-    command_slave(BACKWARD, 180); 
-    delay(3000);
-    command_slave(STOP); 
-    delay(2000);
-    command_slave(LEFT, 180); 
-    delay(3000);
-    command_slave(STOP); 
-    delay(2000);
-    command_slave(RIGHT, 180); 
-    delay(3000);
-    command_slave(STOP); 
-    delay(2000);
-}
-
-
-
-
-
-
 
 /*---------------State Definitions--------------------------*/
 typedef enum {
@@ -91,8 +47,28 @@ typedef enum {
     STATE_OUTSIDE_BACK, STATE_OUTSIDE_LEFT_2, STATE_IGNITE, STATE_FWD, STATE_DROP
   } States_t;
   
-  /*---------------Module Variables---------------------------*/
-  States_t state;
+/*---------------Module Variables---------------------------*/
+States_t state;
+float us_left_dist, us_right_dist, us_back_dist, us_front_dist;
+uint16_t IR_value;
+uint16_t IR_mapped;
+
+// Initialize objects 
+Payload p1(SERVO_PIN);
+Ultrasonic us_right(US_R_TRIG, US_R_ECHO);
+
+
+/*---------------Main Functions----------------------------*/
+void setup() {
+    Wire.begin();  // start i2c bus as master 
+    p1.begin();  // initialize payload 
+    us_front.begin();  // initialize ultrasonic sensors
+    us_back.begin();
+    us_left.begin();
+    us_right.begin();
+    Serial.begin(9600);
+}
+
 
 void loop() {
     checkGlobalEvents();
@@ -142,29 +118,31 @@ void loop() {
   }
 
 
-
-
 // Handler for global events & responses
 void checkGlobalEvents(void) {
     if (state == STATE_ORIENT) {
-        // ping all US sensors
+        us_left_dist = us_left.distance();
+        us_right_dist = us_right.distance();
+        us_front_dist = us_front.distance();
+        us_back_dist = us_back.distance();
     } else if (state == STATE_RIGHT) {
         // ping only right US sensor
         // analog read beacon sensor
-        if ((us_right.distance() < 13) || (analogRead(IR_PIN) < BEACON_THRESHOLD)) {
-            state = STATE_FWD_2;
-            break;
-        }
+        us_right_dist = us_right.distance();
+        IR_value = analogRead(IR_PIN);
+        IR_mapped = map(IR_value, 0, 1023, 0, 5);
     } else if ((state == STATE_INSIDE_LEFT) || 
                (state == STATE_OUTSIDE_LEFT_1) || 
                (state == STATE_OUTSIDE_LEFT_2)) {
         // ping only left US sensor
+        us_left_dist = us_left.distance();
     } else if ((state == STATE_FWD_1) || 
                (state == STATE_FWD_2) || 
                (state == STATE_INSIDE_BACK) || 
                (state == STATE_OUTSIDE_BACK) || 
                (state == STATE_DROP)) {
         // ping only front US sensor
+        us_front_dist = us_front.distance();
     } else {
         break;
     }
@@ -173,6 +151,7 @@ void checkGlobalEvents(void) {
 
 void handleRight(void) {
     // move right
-    // if (IR beacon sensed) OR (right US < 5 inches)
-        // state = STATE_FWD_2
-}
+    if ((us_right_dist < 13) || (IR_mapped > BEACON_THRESHOLD)) {
+        state = STATE_FWD_2;
+    }
+}   
