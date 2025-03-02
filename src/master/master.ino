@@ -14,8 +14,9 @@
 #define SLAVE_ADDR 9 
 
 // Servo pinouts
-#define SERVO_DROP_PIN 2 
-#define SERVO_FLAG_PIN 3
+#define SERVO_FLAG_PIN 1
+#define SERVO_IGNITE_PIN 2
+#define SERVO_DROP_PIN 3
 
 // US pinouts: 4-13
 #define US_F_TRIG 4     // Front
@@ -58,11 +59,29 @@ void command_slave(uint8_t task_id, uint8_t speed = 100, uint8_t angle = 0) {
 }
 
 
+/*---------------Module Function Prototypes-----------------*/
+void checkGlobalEvents(void);
+void handleStart(void);
+void handleOrient(void);
+void handleFwd1(void);
+void handleRight(void);
+void handleFwd2(void);
+void handleInsideLeft(void);
+void handleOutsideLeft1(void);
+void handleInsideBack(void);
+void handleOutsideBack(void);
+void handleOutsideLeft2(void);
+void handleIgnite(void);
+void handleFwd3(void);
+void handleDrop(void);
+void handleRoundOver(void);
+
+
 /*---------------State Definitions--------------------------*/
 typedef enum {
     STATE_START, STATE_ORIENT, STATE_FWD_1, STATE_RIGHT, STATE_FWD_2, 
-    STATE_INSIDE_LEFT, STATE_OUTSIDE_LEFT_1, STATE_INSIDE_BACK, 
-    STATE_OUTSIDE_BACK, STATE_OUTSIDE_LEFT_2, STATE_IGNITE, STATE_FWD_3, STATE_DROP
+    STATE_INSIDE_LEFT, STATE_OUTSIDE_LEFT_1, STATE_INSIDE_BACK, STATE_OUTSIDE_BACK, 
+    STATE_OUTSIDE_LEFT_2, STATE_IGNITE, STATE_FWD_3, STATE_DROP, STATE_ROUND_OVER
   } States_t;
   
 /*---------------Module Variables---------------------------*/
@@ -81,10 +100,14 @@ bool command_outside_back_sent = false;
 bool command_outside_left2_sent = false;
 bool command_fwd3_sent = false;
 
+unsigned long startMillis;
+unsigned long currentMillis;
 
 // Initialize objects 
-Payload p1(SERVO_DROP_PIN);
-Payload p2(SERVO_FLAG_PIN);
+Payload p_flag(SERVO_FLAG_PIN);
+Payload p_ignite(SERVO_IGNITE_PIN);
+Payload p_drop(SERVO_DROP_PIN);
+
 
 Ultrasonic us_front(US_F_TRIG, US_F_ECHO);
 Ultrasonic us_back(US_B_TRIG, US_B_ECHO);
@@ -96,12 +119,17 @@ Ultrasonic us_left2(US_L2_TRIG, US_L2_ECHO);
 /*---------------Main Functions----------------------------*/
 void setup() {
     Wire.begin();  // start i2c bus as master 
-    p1.begin();  // initialize payload 
+    p_flag.begin();  // initialize servo payloads 
+    p_ignite.begin();
+    p_drop.begin();  
     us_front.begin();  // initialize ultrasonic sensors
     us_back.begin();
-    us_left.begin();
+    us_left1.begin();
+    us_left2.begin();
     us_right.begin();
     Serial.begin(9600);
+    state = STATE_START; // Initial state
+    startMillis = millis(); // Start time
 }
 
 
@@ -141,11 +169,14 @@ void loop() {
       case STATE_IGNITE:            // Hit ignite button
         handleIgnite();
         break;
-      case STATE_FWD_3:               // Forward to drop ingredient 
-        handleFwd();
+      case STATE_FWD_3:             // Forward to drop ingredient 
+        handleFwd3();
         break;
       case STATE_DROP:              // Drop ingredient
         handleDrop();
+        break;
+      case STATE_ROUND_OVER:        // Raise flag
+        handleRoundOver();
         break;
       default:    // Should never get into an unhandled state
         Serial.println("What is this I do not even...");
@@ -155,6 +186,10 @@ void loop() {
 
 // Handler for global events & responses
 void checkGlobalEvents(void) {
+    currentMillis = millis();
+    if (currentMillis - startMillis >= 130000) {    // 130 second rounds
+        state == STATE_ROUND_OVER;
+    }
     if (state == STATE_ORIENT) {
         // ping all US sensors
         us_front_dist = us_front.distance();
@@ -187,10 +222,17 @@ void checkGlobalEvents(void) {
   }
 
 
-// Handler for start state --> check start time and lower flag
+// Handler for start state
 void handleStart(void) {
     // TODO: Implement servo action
     // Blocking code is probably fine here
+    p_flag.release(); // TODO: configure servo to lower flag
+}
+
+
+// Handler for orient state
+void handleOrient(void) {
+    // TODO: implement kien's code
 }
 
 
@@ -332,6 +374,7 @@ void handleOutsideLeft2(void) {
 void handleIgnite(void) {
     // TODO: Implement servo action
     // Blocking code is probably fine here
+    p_ignite.release(); // TODO: configure servo to hit igniter
 } 
 
 
@@ -354,4 +397,14 @@ void handleFwd3(void) {
 void handleDrop(void) {
     // TODO: Implement servo action
     // Blocking code is probably fine here
+    p_drop.release(); // TODO: configure servo to release ingredient
+}
+
+
+// Handler for round over
+void handleRoundOver(void) {
+    // TODO: Implement servo action
+    // Blocking code is probably fine here
+    command_slave(STOP); 
+    p_flag.release();   // TODO: servo to raise flag for round end
 }
