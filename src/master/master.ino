@@ -51,11 +51,13 @@ typedef enum {
 States_t state;
 float us_left_dist, us_right_dist, us_back_dist, us_front_dist;
 uint16_t IR_value;
-uint16_t IR_mapped;
 
 // Initialize objects 
 Payload p1(SERVO_PIN);
 Ultrasonic us_right(US_R_TRIG, US_R_ECHO);
+Ultrasonic us_left(US_L_TRIG, US_L_ECHO);
+Ultrasonic us_front(US_F_TRIG, US_F_ECHO);
+Ultrasonic us_back(US_B_TRIG, US_B_ECHO);
 
 
 /*---------------Main Functions----------------------------*/
@@ -130,7 +132,7 @@ void checkGlobalEvents(void) {
         // analog read beacon sensor
         us_right_dist = us_right.distance();
         IR_value = analogRead(IR_PIN);
-        IR_mapped = map(IR_value, 0, 1023, 0, 5);
+        IR_value = map(IR_value, 0, 1023, 0, 5);
     } else if ((state == STATE_INSIDE_LEFT) || 
                (state == STATE_OUTSIDE_LEFT_1) || 
                (state == STATE_OUTSIDE_LEFT_2)) {
