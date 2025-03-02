@@ -3,10 +3,10 @@
 #include "payload.h"
 
 // Task IDs corresponding to drivetrain movement (used by I2C messaging)
-#define FORWARD  1
-#define BACKWARD 2
-#define LEFT     3
-#define RIGHT    4
+#define LEFT     1  // Chris changed Kien's numbering to reflect new naming convention
+#define RIGHT    2    
+#define BACKWARD 3
+#define FORWARD  4
 #define ROT_CW   5  // TO DO: implement rotation in drivetrain.cpp / .h
 #define ROT_CCW  6  // TO DO: implement rotation in drivetrain.cpp / .h
 #define STOP     7
@@ -188,7 +188,7 @@ void loop() {
 void checkGlobalEvents(void) {
     currentMillis = millis();
     if (currentMillis - startMillis >= 130000) {    // 130 second rounds
-        state == STATE_ROUND_OVER;
+        state == STATE_ROUND_OVER;                  // TODO: Blocking code may effect round end timing
     }
     if (state == STATE_ORIENT) {
         // ping all US sensors
@@ -226,7 +226,9 @@ void checkGlobalEvents(void) {
 void handleStart(void) {
     // TODO: Implement servo action
     // Blocking code is probably fine here
-    p_flag.release(); // TODO: configure servo to lower flag
+
+    // p_flag.release(); // TODO: configure servo to lower flag
+    state = STATE_FWD_1;
 }
 
 
