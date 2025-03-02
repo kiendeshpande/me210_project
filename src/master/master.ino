@@ -8,17 +8,35 @@
 #define LEFT     3
 #define RIGHT    4
 #define ROT_CW   5  // TO DO: implement rotation in drivetrain.cpp / .h
-#define ROT_CCW  6. // TO DO: implement rotation in drivetrain.cpp / .h
+#define ROT_CCW  6  // TO DO: implement rotation in drivetrain.cpp / .h
 #define STOP     7
 
 #define SLAVE_ADDR 9 
 
-#define SERVO_PIN 8 
-#define US_R_TRIG 6
-#define US_R_ECHO 7
-#define IR_PIN A0
+// Servo pinouts
+#define SERVO_DROP_PIN 2 
+#define SERVO_FLAG_PIN 3
 
+// US pinouts: 4-13
+#define US_F_TRIG 4     // Front
+#define US_F_ECHO 5
+
+#define US_B_TRIG 6     // Back
+#define US_B_ECHO 7
+
+#define US_R_TRIG 8     // Right
+#define US_R_ECHO 9
+
+#define US_L1_TRIG 10   // Left 1
+#define US_L1_ECHO 11
+
+#define US_L2_TRIG 12   // Left 2
+#define US_L2_ECHO 13
+
+// IR Beacon pinout
+#define IR_PIN A0
 #define BEACON_THRESHOLD 3.3
+
 
 // i2c TX sent as a struct with required data for one drivetrain command
 // this includes the task_id (forward, backward, etc.) and required arguments (speed and angle)
@@ -49,15 +67,18 @@ typedef enum {
   
 /*---------------Module Variables---------------------------*/
 States_t state;
-float us_left_dist, us_right_dist, us_back_dist, us_front_dist;
+float us_front_dist, us_back_dist, us_right_dist, us_left1_dist, us_left2_dist;
 uint16_t IR_value;
 
 // Initialize objects 
-Payload p1(SERVO_PIN);
-Ultrasonic us_right(US_R_TRIG, US_R_ECHO);
-Ultrasonic us_left(US_L_TRIG, US_L_ECHO);
+Payload p1(SERVO_DROP_PIN);
+Payload p2(SERVO_FLAG_PIN);
+
 Ultrasonic us_front(US_F_TRIG, US_F_ECHO);
 Ultrasonic us_back(US_B_TRIG, US_B_ECHO);
+Ultrasonic us_right(US_R_TRIG, US_R_ECHO);
+Ultrasonic us_left1(US_L1_TRIG, US_L1_ECHO);
+Ultrasonic us_left2(US_L2_TRIG, US_L2_ECHO);
 
 
 /*---------------Main Functions----------------------------*/
@@ -123,10 +144,12 @@ void loop() {
 // Handler for global events & responses
 void checkGlobalEvents(void) {
     if (state == STATE_ORIENT) {
-        us_left_dist = us_left.distance();
-        us_right_dist = us_right.distance();
+        // ping all US sensors
         us_front_dist = us_front.distance();
         us_back_dist = us_back.distance();
+        us_right_dist = us_right.distance();
+        us_left1_dist = us_left1.distance();
+        us_left2_dist = us_left2.distance();
     } else if (state == STATE_RIGHT) {
         // ping only right US sensor
         // analog read beacon sensor
@@ -137,7 +160,8 @@ void checkGlobalEvents(void) {
                (state == STATE_OUTSIDE_LEFT_1) || 
                (state == STATE_OUTSIDE_LEFT_2)) {
         // ping only left US sensor
-        us_left_dist = us_left.distance();
+        // TODO: read both or just one of left US
+        us_left_dist = us_left1.distance();
     } else if ((state == STATE_FWD_1) || 
                (state == STATE_FWD_2) || 
                (state == STATE_INSIDE_BACK) || 
