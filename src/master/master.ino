@@ -14,11 +14,7 @@
 #define SLAVE_ADDR 9 
 
 
-// Servo pinouts
-#define SERVO_DROP_PIN 2 
-#define SERVO_FLAG_PIN 3
-
-// US pinouts: 4-13
+// ultrasonic pinouts 
 #define US_F_TRIG 5     // Front
 #define US_F_ECHO 4
 #define US_B_TRIG 3     // Back
@@ -29,10 +25,6 @@
 #define US_L1_ECHO 13
 #define US_L2_TRIG 9    // Left 2
 #define US_L2_ECHO 8
-
-// IR Beacon pinout
-#define IR_PIN A0
-#define BEACON_THRESHOLD 3.3
 
 #define SZ_THRESH 18
 #define SZ_DIR 38
@@ -49,14 +41,10 @@ typedef enum {
 /*---------------Module Variables---------------------------*/
 States_t state;
 float us_f, us_b, us_r, us_l1, us_l2;
-uint16_t IR_value;
 
 bool command_sent = false; 
 
 // Initialize objects 
-//Payload p1(SERVO_DROP_PIN);
-//Payload p2(SERVO_FLAG_PIN);
-
 Ultrasonic us_front(US_F_TRIG, US_F_ECHO);
 Ultrasonic us_back(US_B_TRIG, US_B_ECHO);
 Ultrasonic us_right(US_R_TRIG, US_R_ECHO);
@@ -87,11 +75,9 @@ void command_slave(uint8_t task_id, uint8_t speed = 100, uint8_t angle = 0) {
 
 void setup() {
     Wire.begin();  // start i2c bus as master 
-    //p1.begin();  // initialize payload 
     
-    // initialize ultrasonic 
-    // TO DO: write a sensors class and handle ultrasonics within this 
-    us_front.begin();  // initialize ultrasonic sensors
+    // TO DO: write a robot/sensors class and handle ultrasonics within this 
+    us_front.begin();  
     us_back.begin();
     us_left1.begin();
     us_left2.begin();
@@ -99,7 +85,7 @@ void setup() {
   
     Serial.begin(9600);
 
-    state = STATE_ORIENT;
+    state = STATE_ORIENT; 
 }
 
 
@@ -119,31 +105,12 @@ void loop() {
 // Handler for global events & responses
 void checkGlobalEvents(void) {
     if (state == STATE_ORIENT) {
-        // ping all US sensors
+        // update ultrasonic readings 
         us_f = us_front.distance();
         us_b = us_back.distance();
         us_r = us_right.distance();
         us_l1 = us_left1.distance();
         us_l2 = us_left2.distance();
-    } else if (state == STATE_RIGHT) {
-        // ping only right US sensor
-        // analog read beacon sensor
-        us_r = us_right.distance();
-        IR_value = analogRead(IR_PIN);
-        IR_value = map(IR_value, 0, 1023, 0, 5);
-    } else if ((state == STATE_INSIDE_LEFT) || 
-               (state == STATE_OUTSIDE_LEFT_1) || 
-               (state == STATE_OUTSIDE_LEFT_2)) {
-        // ping only left US sensor
-        // TODO: read both or just one of left US
-        us_l1 = us_left1.distance();
-    } else if ((state == STATE_FWD_1) || 
-               (state == STATE_FWD_2) || 
-               (state == STATE_INSIDE_BACK) || 
-               (state == STATE_OUTSIDE_BACK) || 
-               (state == STATE_DROP)) {
-        // ping only front US sensor
-        us_f = us_front.distance();
     } else {
         return;
     }
