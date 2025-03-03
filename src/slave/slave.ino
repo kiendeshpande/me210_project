@@ -33,8 +33,8 @@
 
 
 struct i2c_payload {
-    i2c_payload(): task_id(0), speed(0), angle(0) {}
-    uint8_t task_id, speed, angle; 
+    i2c_payload(): task_id(0), speed(0) {}
+    uint8_t task_id, speed;
 };
 static i2c_payload rx_data; 
 
@@ -70,18 +70,15 @@ void process_task() {
             chassis.right(rx_data.speed);
             break;
         case ROT_CW: 
-            chassis.rot_cw(rx_data.speed, rx_data.angle);
+            chassis.rot_cw(rx_data.speed);
             break;
         case ROT_CCW:
-            chassis.rot_ccw(rx_data.speed, rx_data.angle);
+            chassis.rot_ccw(rx_data.speed);
             break;
         case STOP:
             chassis.stop();
             break;
         default:
-            // TO DO: decide on case in default behavior (do nothing is a good option, to keep current command)
-            // default case should only hit in the case i2c message is corrupted (task_id corrupted) or invalid task_id passed in
-            Serial.println("INVALID TASK ID"); 
             break;
     }
 }
@@ -94,7 +91,6 @@ void receiveEvent(int num_bytes) {
         byte* ptr = (byte*) &rx_data; // update rx_data struct with new information 
         for (int i = 0; i < sizeof(i2c_payload); i++) {
           ptr[i] = Wire.read();
-          Serial.println(ptr[i]);
         }
         process_task(); // execute task 
     }

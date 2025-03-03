@@ -26,23 +26,24 @@
 #define US_L2_TRIG 9    // Left 2
 #define US_L2_ECHO 8
 
-#define SZ_THRESH 18
+#define SZ_THRESH 25
 #define SZ_DIR 38
 
 
 /*---------------State Definitions--------------------------*/
+
+/* More states to be added, enum limited to currently implemented states */
 typedef enum {
-    STATE_START, STATE_ORIENT, STATE_FWD_1, STATE_RIGHT, STATE_FWD_2, 
-    STATE_INSIDE_LEFT, STATE_OUTSIDE_LEFT_1, STATE_INSIDE_BACK, 
-    STATE_OUTSIDE_BACK, STATE_OUTSIDE_LEFT_2, STATE_IGNITE, STATE_FWD, STATE_DROP
+    STATE_START, STATE_ORIENT, STATE_FWD_1, STATE_RIGHT, STATE_FWD_2, STATE_LEFT
   } States_t;
   
 
 /*---------------Module Variables---------------------------*/
 States_t state;
-float us_f, us_b, us_r, us_l1, us_l2;
+float us_f, us_b, us_r, us_l1, us_l2, us_l1l2_err;
+float timer_tmp; 
 
-bool command_sent = false; 
+bool command_sent = false;  // used to prevent repeated commands while in same state
 
 // Initialize objects 
 Ultrasonic us_front(US_F_TRIG, US_F_ECHO);
@@ -54,8 +55,8 @@ Ultrasonic us_left2(US_L2_TRIG, US_L2_ECHO);
 // i2c TX sent as a struct with required data for one drivetrain command
 // this includes the task_id (forward, backward, etc.) and required arguments (speed and angle)
 struct i2c_payload {
-    i2c_payload(): task_id(0), speed(0), angle(0) {}
-    uint8_t task_id, speed, angle; 
+    i2c_payload(): task_id(0), speed(0) {}
+    uint8_t task_id, speed;
 };
 static i2c_payload tx_data; 
 
@@ -63,11 +64,10 @@ static i2c_payload tx_data;
 /*---------------State and Helper Functions---------------------------*/
 
 /* Sends TX to slave given a drivetrain task id, speed, and angle. */
-void command_slave(uint8_t task_id, uint8_t speed = 100, uint8_t angle = 0) {
+void command_slave(uint8_t task_id, uint8_t speed = 100, uint8_t kp1 = 1, uint8_t kp2 = 1) {
     Wire.beginTransmission(SLAVE_ADDR);
     tx_data.task_id = task_id;
     tx_data.speed = speed;
-    tx_data.angle = angle;
     Wire.write((byte*) &tx_data, sizeof(tx_data));
     Wire.endTransmission();
 }
@@ -94,47 +94,136 @@ void loop() {
     checkGlobalEvents();
     switch (state) {
       case STATE_ORIENT:        
-        handleOrient();
-        break;
+          handle_orient();
+          break;
+      case STATE_FWD_1:             
+          handle_fwd1();
+          break;
+      case STATE_RIGHT:
+          handle_right();
+          break;
+      case STATE_FWD_2:
+          handle_fwd2();
+          break;
+      case STATE_LEFT:
+          handle_left();
+          break; 
       default:    
-        break;
+          break;
     }
   }
 
 
-// Handler for global events & responses
+/* Handler for global events & responses */
 void checkGlobalEvents(void) {
     if (state == STATE_ORIENT) {
-        // update ultrasonic readings 
         us_f = us_front.distance();
-        us_b = us_back.distance();
-        us_r = us_right.distance();
         us_l1 = us_left1.distance();
         us_l2 = us_left2.distance();
-    } else {
-        return;
-    }
-  }
+        us_r = us_right.distance();
+        us_l1l2_err = abs(us_l1 - us_l2);
+    } else if (state == STATE_FWD_1) {
+        us_f = us_front.distance(); 
+    } else if (state == STATE_FWD_2) {
+        us_f = us_front.distance();
+    } else {}
+}
 
 
-/* Routine for orientation state. Square the robot inside the start zone. CCW rotation until 
+/* Routine for orientation state. Square the robot inside the start zone. Rotation until 
 the two leftside ultrasonics are aligned and the front ultrasonic faces desired direction */
-void handleOrient () {
-    float err = 0.4; // tolerance when determining alignment between us sensors 
-    bool direction = (us_f > SZ_DIR) & (us_l1 < SZ_THRESH) & (us_l2 < SZ_THRESH); 
-    bool aligned   = abs(us_l1 - us_l2) < err;  
+void handle_orient () {
+    float err = 0.75; // tolerance when determining alignment between us sensors 
+    bool direction = (us_f > SZ_DIR) & (us_l1 < SZ_THRESH) & (us_l2 < SZ_THRESH) & (us_r < SZ_DIR); 
+    bool aligned   = us_l1l2_err < err;  
 
     if (direction & aligned) {
         command_slave(STOP);
         command_sent = false;
-        state = STATE_FWD;
+        state = STATE_FWD_1;
+        delay(2000);
         return; // correctly oriented 
     }
 
-    if (command_sent == false) {   // prevent repeated rotation commands 
+    if (command_sent == false) {   
         command_slave(ROT_CCW, 90); 
         command_sent = true; 
     }
+    return;
+}
+
+
+/* Forward state to exit start zone. */
+void handle_fwd1() {
+    if (command_sent == false) {
+        // note the drivetrain movements conform to the prior direction convention
+        // this is where "forward" is the direction with the 2 ultrasonic sensors on one face
+        // TO DO: once beat-the-brick complete, fix nomenclature so drivetrain directions match convention in this file
+        command_slave(RIGHT, 140);  
+        command_sent = true;
+    }
+
+    if (us_f > 40) 
+      return; 
+
+    command_slave(STOP);
+    command_sent = false;
+    state = STATE_RIGHT;
+    return;
+}
+
+/* Travel from left side of field to right side of field using elapsed time */
+void handle_right() {
+    if (command_sent == false) {
+      command_slave(BACKWARD, 140);
+      timer_tmp = millis(); // record current time
+      command_sent = true;
+    }
+
+    float elapsed = millis() - timer_tmp;  // elapsed time in this state
+    if (elapsed < 2300) 
+      return; 
+
+    command_slave(STOP);
+    command_sent = false;
+    state = STATE_FWD_2; 
+    return;
+}
+
+/* Align robot with far wall prior to pushing the pot */
+void handle_fwd2() {
+  if (command_sent == false) {
+      command_slave(RIGHT, 140);
+      timer_tmp = millis();
+      command_sent = true;
+  }
+
+  float elapsed = millis() - timer_tmp; 
+  if (elapsed < 1200) 
+    return; 
+
+  command_slave(STOP);
+  command_sent = false;
+  state = STATE_LEFT; 
+  return;
+}
+
+/* Push pot left across the course, onto the burner */
+void handle_left() {
+    if (command_sent == false) {
+      command_slave(FORWARD, 140);
+      timer_tmp = millis();
+      command_sent = true;
+  }
+
+  float elapsed = millis() - timer_tmp; 
+  if (elapsed < 3000)
+    return;
+
+  command_slave(STOP);
+  command_sent = false;
+  state = STATE_START;
+  return;
 }
 
 

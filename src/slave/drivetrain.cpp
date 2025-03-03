@@ -29,42 +29,32 @@ void Drivetrain::backward(uint8_t speed) {
     m4.backward(speed);
 }
 
-/* Moves chassis laterally left at the given speed. Speed is duty cycle from 0-255. */
-void Drivetrain::left(uint8_t speed) {
+/* Moves chassis laterally right at the given speed. Speed is duty cycle from 0-255. */
+void Drivetrain::right(uint8_t speed) {
     m1.backward(speed);
     m2.forward(speed);
     m3.forward(speed);
     m4.backward(speed);
 }
 
-/* Moves chassis laterally right at the given speed. Speed is duty cycle from 0-255. */
-void Drivetrain::right(uint8_t speed) {
+/* Moves chassis laterally left at the given speed. Speed is duty cycle from 0-255. */
+void Drivetrain::left(uint8_t speed) {
     m1.forward(speed);
     m2.backward(speed);
     m3.backward(speed);
     m4.forward(speed);
 }
 
-/* Rotates chassis clockwise at the given speed. Speed is duty cycle from 0-255. 
-Angle is in degrees from 0-360. */
-void Drivetrain::rot_cw(uint8_t speed, uint8_t angle) {
-    // TO DO: add angle / duration logic 
-
-    // to implement, review Mecanum wheel movements to achieve a rotation 
-    // there are various approaches to rotation we can implement/test
-      // 1) duration based -> duration based rotation to achieve a specific angle 
-      // 2) infinite -> infinite cw/ccw rotation until higher-level code receives some sensory input, then stop rotation
-
+/* Rotates chassis clockwise at the given speed. Speed is duty cycle from 0-255 */
+void Drivetrain::rot_cw(uint8_t speed) {
     m1.forward(speed);
     m2.backward(speed);
     m3.forward(speed);
     m4.backward(speed);
 }
 
-/* Rotates chassis counter clockwise at the given speed. Speed is duty cycle from 0-255. 
-Angle is in degrees from 0-360. */
-void Drivetrain::rot_ccw(uint8_t speed, uint8_t angle) {
-    // TO DO: add angle / duration logic 
+/* Rotates chassis counter clockwise at the given speed. Speed is duty cycle from 0-255.*/
+void Drivetrain::rot_ccw(uint8_t speed) {
     m1.backward(speed);
     m2.forward(speed);
     m3.backward(speed);
