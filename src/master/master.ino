@@ -14,9 +14,9 @@
 #define SLAVE_ADDR 9 
 
 // Servo pinouts
-#define SERVO_FLAG_PIN 1
-#define SERVO_IGNITE_PIN 2
-#define SERVO_DROP_PIN 3
+#define SERVO_FLAG_PIN 10
+#define SERVO_IGNITE_PIN 11
+#define SERVO_DROP_PIN 1
 
 // US pinouts: 4-13
 #define US_F_TRIG 5     // Front
@@ -120,7 +120,7 @@ void setup() {
     us_right.begin();
     Serial.begin(9600);
     // state = STATE_START; // Initial state
-    state = STATE_ORIENT;  
+    state = STATE_ORIENT;  // Start for testing individual states 
     startMillis = millis(); // Start time
 }
 
@@ -137,39 +137,39 @@ void loop() {
       case STATE_FWD_1:             // Forward to clear kitchen
         handleFwd1();
         break;
-      case STATE_RIGHT:             // Right until pot or wall
-        handleRight();
-        break;
-      case STATE_FWD_2:             // FWD to push pot
-        handleFwd2();
-        break;
-      case STATE_INSIDE_LEFT:       // Move left and push pot when inside handles 
-        handleInsideLeft();
-        break;
-      case STATE_OUTSIDE_LEFT_1:    // Move left and push pot when outside handles
-        handleOutsideLeft1();
-        break;
-      case STATE_INSIDE_BACK:       // Back out of pot to ignite
-        handleInsideBack();
-        break;
-      case STATE_OUTSIDE_BACK:      // Back out of pushing handles
-        handleOutsideBack();
-        break;
-      case STATE_OUTSIDE_LEFT_2:    // Left until able to ignite
-        handleOutsideLeft2();
-        break;
-      case STATE_IGNITE:            // Hit ignite button
-        handleIgnite();
-        break;
-      case STATE_FWD_3:             // Forward to drop ingredient 
-        handleFwd3();
-        break;
-      case STATE_DROP:              // Drop ingredient
-        handleDrop();
-        break;
-      case STATE_ROUND_OVER:        // Raise flag
-        handleRoundOver();
-        break;
+    //   case STATE_RIGHT:             // Right until pot or wall
+    //     handleRight();
+    //     break;
+    //   case STATE_FWD_2:             // FWD to push pot
+    //     handleFwd2();
+    //     break;
+    //   case STATE_INSIDE_LEFT:       // Move left and push pot when inside handles 
+    //     handleInsideLeft();
+    //     break;
+    //   case STATE_OUTSIDE_LEFT_1:    // Move left and push pot when outside handles
+    //     handleOutsideLeft1();
+    //     break;
+    //   case STATE_INSIDE_BACK:       // Back out of pot to ignite
+    //     handleInsideBack();
+    //     break;
+    //   case STATE_OUTSIDE_BACK:      // Back out of pushing handles
+    //     handleOutsideBack();
+    //     break;
+    //   case STATE_OUTSIDE_LEFT_2:    // Left until able to ignite
+    //     handleOutsideLeft2();
+    //     break;
+    //   case STATE_IGNITE:            // Hit ignite button
+    //     handleIgnite();
+    //     break;
+    //   case STATE_FWD_3:             // Forward to drop ingredient 
+    //     handleFwd3();
+    //     break;
+    //   case STATE_DROP:              // Drop ingredient
+    //     handleDrop();
+    //     break;
+    //   case STATE_ROUND_OVER:        // Raise flag
+    //     handleRoundOver();
+    //     break;
       default:    // Should never get into an unhandled state
         Serial.println("What is this I do not even...");
     }
@@ -240,7 +240,7 @@ void handleOrient () {
     }
 
     if (command_sent == false) {   // prevent repeated rotation commands 
-        command_slave(ROT_CCW, 90); 
+        command_slave(ROT_CCW, 80); 
         command_sent = true; 
     }
 }
@@ -254,7 +254,7 @@ void handleFwd1(void) {
         command_sent = true;
     }
     // Check distance
-    if (us_f < 30) {       // TODO: calibrate distance on course
+    if (us_f < 10) {       // TODO: calibrate distance on course
         state = STATE_RIGHT;
         command_slave(STOP);
     }
@@ -270,7 +270,7 @@ void handleRight(void) {
         command_sent = true;
     }
     // Check distance
-    if (us_r < 13) {       // TODO: calibrate distance on course
+    if (us_r < 5) {       // TODO: calibrate distance on course
         state = STATE_FWD_2;
         command_slave(STOP);
     } 
