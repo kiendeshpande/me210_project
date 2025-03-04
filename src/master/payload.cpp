@@ -9,7 +9,22 @@ void Payload::begin() {
 
 /* Opens and closes servo to release ingredients from payload. */
 void Payload::release() {
-    servo.write(90); 
+    servo.write(20); 
     delay(2000); 
-    servo.write(0); 
+    servo.write(135); 
+}
+
+/* Opens and closes servo to release ingredients from payload. */
+void Payload::ignite() {
+    servo.write(180); 
+    delay(1000); 
+    servo.write(70); 
+}
+
+void Payload::init_ignite() {
+    servo.write(70); 
+}
+
+void Payload::init_drop() {
+    servo.write(135); 
 }

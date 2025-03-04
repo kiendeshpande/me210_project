@@ -29,12 +29,17 @@
 #define SZ_THRESH 25
 #define SZ_DIR 38
 
+// Servo pinouts
+// #define SERVO_FLAG_PIN 10
+#define SERVO_IGNITE_PIN 11
+#define SERVO_DROP_PIN 10
+
 
 /*---------------State Definitions--------------------------*/
 
 /* More states to be added, enum limited to currently implemented states */
 typedef enum {
-    STATE_START, STATE_ORIENT, STATE_FWD_1, STATE_RIGHT, STATE_FWD_2, STATE_LEFT
+    STATE_START, STATE_ORIENT, STATE_FWD_1, STATE_RIGHT, STATE_FWD_2, STATE_LEFT, STATE_BACKUP, STATE_LEFT2, STATE_IGNITE, STATE_RIGHT2, STATE_FWD_3, STATE_DROP, STATE_DONE
   } States_t;
   
 
@@ -60,6 +65,11 @@ struct i2c_payload {
 };
 static i2c_payload tx_data; 
 
+// Initialize objects 
+// Payload p_flag(SERVO_FLAG_PIN);
+Payload p_ignite(SERVO_IGNITE_PIN);
+Payload p_drop(SERVO_DROP_PIN);
+
 
 /*---------------State and Helper Functions---------------------------*/
 
@@ -82,10 +92,14 @@ void setup() {
     us_left1.begin();
     us_left2.begin();
     us_right.begin();
+
+    p_ignite.begin();
+    p_drop.begin();  
   
     Serial.begin(9600);
 
-    state = STATE_ORIENT; 
+    // state = STATE_ORIENT; 
+    state = STATE_START;
 }
 
 
@@ -93,6 +107,9 @@ void setup() {
 void loop() {
     checkGlobalEvents();
     switch (state) {
+      case STATE_START:
+          handle_start();
+          break;
       case STATE_ORIENT:        
           handle_orient();
           break;
@@ -108,6 +125,24 @@ void loop() {
       case STATE_LEFT:
           handle_left();
           break; 
+      case STATE_BACKUP:
+          handle_backup();
+          break;
+      case STATE_LEFT2:
+          handle_left2();
+          break;
+      case STATE_IGNITE:
+          handle_ignite();
+          break;
+      case STATE_RIGHT2:
+          handle_right2();
+          break;
+      case STATE_FWD_3:
+          handle_fwd3();
+          break;
+      case STATE_DROP:
+          handle_drop();
+          break;
       default:    
           break;
     }
@@ -129,6 +164,12 @@ void checkGlobalEvents(void) {
     } else {}
 }
 
+// Initialize servos to correct positions
+void handle_start() {
+  p_drop.init_drop();
+  p_ignite.init_ignite();
+  state = STATE_ORIENT;
+}
 
 /* Routine for orientation state. Square the robot inside the start zone. Rotation until 
 the two leftside ultrasonics are aligned and the front ultrasonic faces desired direction */
@@ -187,6 +228,7 @@ void handle_right() {
     command_slave(STOP);
     command_sent = false;
     state = STATE_FWD_2; 
+    delay(1000);
     return;
 }
 
@@ -222,8 +264,98 @@ void handle_left() {
 
   command_slave(STOP);
   command_sent = false;
-  state = STATE_START;
+  state = STATE_BACKUP;
   return;
 }
+
+
+void handle_backup() {
+    if (command_sent == false) {
+      command_slave(LEFT, 140);
+      timer_tmp = millis();
+      command_sent = true;
+  }
+
+  float elapsed = millis() - timer_tmp; 
+  if (elapsed < 1400)
+    return;
+
+  command_slave(STOP);
+  command_sent = false;
+  state = STATE_LEFT2;
+  return;
+}
+
+
+void handle_left2() {
+    if (command_sent == false) {
+      command_slave(FORWARD, 140);
+      timer_tmp = millis();
+      command_sent = true;
+  }
+
+  float elapsed = millis() - timer_tmp; 
+  if (elapsed < 1200)
+    return;
+
+  command_slave(STOP);
+  command_sent = false;
+  state = STATE_IGNITE;
+  return;
+}
+
+void handle_ignite() {
+  command_slave(STOP);
+  delay(1000);
+  p_ignite.ignite();
+  delay(1000);
+  state = STATE_RIGHT2;
+}
+
+/* Travel from left side of field to right side of field using elapsed time */
+void handle_right2() {
+    if (command_sent == false) {
+      command_slave(BACKWARD, 140);
+      timer_tmp = millis(); // record current time
+      command_sent = true;
+    }
+
+    float elapsed = millis() - timer_tmp;  // elapsed time in this state
+    if (elapsed < 170) 
+      return; 
+
+    command_slave(STOP);
+    command_sent = false;
+    state = STATE_FWD_3; 
+    delay(1000);
+    return;
+}
+
+
+void handle_fwd3() {
+    if (command_sent == false) {
+      command_slave(RIGHT, 140);
+      timer_tmp = millis();
+      command_sent = true;
+  }
+
+  float elapsed = millis() - timer_tmp; 
+  if (elapsed < 1200)
+    return;
+
+  command_slave(STOP);
+  command_sent = false;
+  state = STATE_DROP;
+  return;
+}
+
+
+void handle_drop() {
+  delay(1000);
+  p_drop.release();
+  delay(1000);
+  state = STATE_DONE;
+}
+
 
 
