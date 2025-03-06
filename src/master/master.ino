@@ -39,7 +39,8 @@
 
 /* More states to be added, enum limited to currently implemented states */
 typedef enum {
-    STATE_START, STATE_ORIENT, STATE_FWD_1, STATE_RIGHT, STATE_FWD_2, STATE_LEFT, STATE_BACKUP, STATE_LEFT2, STATE_IGNITE, STATE_RIGHT2, STATE_FWD_3, STATE_DROP, STATE_DONE
+    STATE_START, STATE_ORIENT, STATE_LEFT1, STATE_FWD1, STATE_IGNITE, STATE_RIGHT1, STATE_FWD2, STATE_LEFT2, STATE_RIGHT2, 
+    STATE_BACK1, STATE_LOAD, STATE_FWD3, STATE_LEFT3, STATE_RIGHT3, STATE_FWD4, STATE_DROP, STATE_BACK2, STATE_DONE
   } States_t;
   
 
@@ -113,35 +114,54 @@ void loop() {
       case STATE_ORIENT:        
           handle_orient();
           break;
-      case STATE_FWD_1:             
+      case STATE_LEFT1:   // Left to wall so close to igniter after orient
+          handle_left1();
+          break;
+      case STATE_FWD1:    // align with igniter         
           handle_fwd1();
           break;
-      case STATE_RIGHT:
-          handle_right();
-          break;
-      case STATE_FWD_2:
-          handle_fwd2();
-          break;
-      case STATE_LEFT:
-          handle_left();
-          break; 
-      case STATE_BACKUP:
-          handle_backup();
-          break;
-      case STATE_LEFT2:
-          handle_left2();
-          break;
-      case STATE_IGNITE:
+      case STATE_IGNITE:  // hit igniter
           handle_ignite();
           break;
-      case STATE_RIGHT2:
-          handle_right2();
+      case STATE_RIGHT1:   // right to far wall
+          handle_right1();
           break;
-      case STATE_FWD_3:
+      case STATE_FWD2:   // fwd to wall
+          handle_fwd2();
+          break;
+      case STATE_LEFT2:   // push pot to burner
+          handle_left2();
+          break; 
+/*---------------Start of states for continuous loop during round---------------------------*/
+      case STATE_RIGHT2:  // right to far wall
+          handle_right2(); 
+          break;
+      case STATE_BACK1: // backup to loading area
+          handle_back1();
+          break;
+      case STATE_LOAD:    // load balls
+          handle_load();
+          break;
+      case STATE_FWD3:   // fwd to clear kitchen and handles
           handle_fwd3();
           break;
-      case STATE_DROP:
+      case STATE_LEFT3:   // left to far wall
+          handle_left3();
+          break;
+      case STATE_RIGHT3:   // right a little bit to clear first handle
+          handle_right3();
+          break;
+      case STATE_FWD4:   // fwd to drop
+          handle_fwd4();
+          break;
+      case STATE_DROP:  // drop balls
           handle_drop();
+          break; 
+      case STATE_BACK2:  // back up to clear handles and transition to right2 state
+          handle_back2();
+          break;
+      case STATE_DONE:
+          handle_done();
           break;
       default:    
           break;
@@ -157,11 +177,12 @@ void checkGlobalEvents(void) {
         us_l2 = us_left2.distance();
         us_r = us_right.distance();
         us_l1l2_err = abs(us_l1 - us_l2);
-    } else if (state == STATE_FWD_1) {
-        us_f = us_front.distance(); 
-    } else if (state == STATE_FWD_2) {
-        us_f = us_front.distance();
-    } else {}
+    }
+    // } else if (state == STATE_FWD1) {
+    //     us_f = us_front.distance(); 
+    // } else if (state == STATE_FWD2) {
+    //     us_f = us_front.distance();
+    // } else {}
 }
 
 // Initialize servos to correct positions
@@ -181,7 +202,7 @@ void handle_orient () {
     if (direction & aligned) {
         command_slave(STOP);
         command_sent = false;
-        state = STATE_FWD_1;
+        state = STATE_LEFT1;
         delay(2000);
         return; // correctly oriented 
     }
@@ -193,8 +214,26 @@ void handle_orient () {
     return;
 }
 
+/* Push pot left across the course, onto the burner */
+void handle_left1() {
+  if (command_sent == false) {
+    command_slave(FORWARD, 140);
+    timer_tmp = millis();
+    command_sent = true;
+}
 
-/* Forward state to exit start zone. */
+float elapsed = millis() - timer_tmp; 
+if (elapsed < 200)
+  return;
+
+command_slave(STOP);
+command_sent = false;
+state = STATE_FWD1;
+return;
+}
+
+
+/* Forward state to exit start zone and position next to igniter */
 void handle_fwd1() {
     if (command_sent == false) {
         // note the drivetrain movements conform to the prior direction convention
@@ -204,17 +243,27 @@ void handle_fwd1() {
         command_sent = true;
     }
 
-    if (us_f > 40) 
+    if (us_f > 80) 
       return; 
 
     command_slave(STOP);
     command_sent = false;
-    state = STATE_RIGHT;
+    state = STATE_IGNITE;
     return;
 }
 
+
+void handle_ignite() {
+  command_slave(STOP);
+  delay(1000);
+  p_ignite.ignite();
+  delay(1000);
+  state = STATE_RIGHT1;
+}
+
+
 /* Travel from left side of field to right side of field using elapsed time */
-void handle_right() {
+void handle_right1() {
     if (command_sent == false) {
       command_slave(BACKWARD, 140);
       timer_tmp = millis(); // record current time
@@ -227,7 +276,7 @@ void handle_right() {
 
     command_slave(STOP);
     command_sent = false;
-    state = STATE_FWD_2; 
+    state = STATE_FWD2; 
     delay(1000);
     return;
 }
@@ -246,12 +295,12 @@ void handle_fwd2() {
 
   command_slave(STOP);
   command_sent = false;
-  state = STATE_LEFT; 
+  state = STATE_LEFT2; 
   return;
 }
 
 /* Push pot left across the course, onto the burner */
-void handle_left() {
+void handle_left2() {
     if (command_sent == false) {
       command_slave(FORWARD, 140);
       timer_tmp = millis();
@@ -264,12 +313,32 @@ void handle_left() {
 
   command_slave(STOP);
   command_sent = false;
-  state = STATE_BACKUP;
+  state = STATE_RIGHT2;
   return;
 }
 
+//-------------------------------- start of loop states----------------------------------//
 
-void handle_backup() {
+// go back to right wall
+void handle_right2() {
+  if (command_sent == false) {
+    command_slave(BACKWARD, 140);
+    timer_tmp = millis(); // record current time
+    command_sent = true;
+  }
+
+  float elapsed = millis() - timer_tmp;  // elapsed time in this state
+  if (elapsed < 2000) 
+    return; 
+
+  command_slave(STOP);
+  command_sent = false;
+  state = STATE_BACK1; 
+  delay(1000);
+  return;
+}
+
+void handle_back1() {
     if (command_sent == false) {
       command_slave(LEFT, 140);
       timer_tmp = millis();
@@ -282,16 +351,23 @@ void handle_backup() {
 
   command_slave(STOP);
   command_sent = false;
-  state = STATE_LEFT2;
+  state = STATE_LOAD;
   return;
 }
 
 
-void handle_left2() {
-    if (command_sent == false) {
-      command_slave(FORWARD, 140);
-      timer_tmp = millis();
-      command_sent = true;
+void handle_load() {
+  delay(2000);
+  state = STATE_FWD3; 
+  return;
+}
+
+
+void handle_fwd3() {
+  if (command_sent == false) {
+    command_slave(RIGHT, 140);
+    timer_tmp = millis();
+    command_sent = true;
   }
 
   float elapsed = millis() - timer_tmp; 
@@ -300,20 +376,30 @@ void handle_left2() {
 
   command_slave(STOP);
   command_sent = false;
-  state = STATE_IGNITE;
+  state = STATE_LEFT3;
   return;
 }
 
-void handle_ignite() {
+
+void handle_left3() {
+    if (command_sent == false) {
+      command_slave(FORWARD, 140);
+      timer_tmp = millis();
+      command_sent = true;
+  }
+
+  float elapsed = millis() - timer_tmp; 
+  if (elapsed < 3000)
+    return;
+
   command_slave(STOP);
-  delay(1000);
-  p_ignite.ignite();
-  delay(1000);
-  state = STATE_RIGHT2;
+  command_sent = false;
+  state = STATE_RIGHT3;
+  return;
 }
 
-/* Travel from left side of field to right side of field using elapsed time */
-void handle_right2() {
+
+void handle_right3() {
     if (command_sent == false) {
       command_slave(BACKWARD, 140);
       timer_tmp = millis(); // record current time
@@ -326,27 +412,27 @@ void handle_right2() {
 
     command_slave(STOP);
     command_sent = false;
-    state = STATE_FWD_3; 
-    delay(1000);
+    state = STATE_FWD4; 
+    // delay(1000);
     return;
 }
 
 
-void handle_fwd3() {
-    if (command_sent == false) {
-      command_slave(RIGHT, 140);
-      timer_tmp = millis();
-      command_sent = true;
-  }
+void handle_fwd4() {
+  if (command_sent == false) {
+    command_slave(RIGHT, 140);
+    timer_tmp = millis();
+    command_sent = true;
+}
 
-  float elapsed = millis() - timer_tmp; 
-  if (elapsed < 1200)
-    return;
-
-  command_slave(STOP);
-  command_sent = false;
-  state = STATE_DROP;
+float elapsed = millis() - timer_tmp; 
+if (elapsed < 1200)
   return;
+
+command_slave(STOP);
+command_sent = false;
+state = STATE_DROP;
+return;
 }
 
 
@@ -354,8 +440,29 @@ void handle_drop() {
   delay(1000);
   p_drop.release();
   delay(1000);
-  state = STATE_DONE;
+  state = STATE_BACK2;
 }
 
 
+void handle_back2() {
+  if (command_sent == false) {
+    command_slave(LEFT, 140);
+    timer_tmp = millis();
+    command_sent = true;
+  }
+
+  float elapsed = millis() - timer_tmp; 
+  if (elapsed < 1400)
+    return;
+
+  command_slave(STOP);
+  command_sent = false;
+  state = STATE_RIGHT2;
+  return;
+}
+
+
+void handle_done() {
+  state = STATE_DONE;
+}
 
