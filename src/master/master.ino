@@ -30,9 +30,8 @@
 #define SZ_DIR 38
 
 // Servo pinouts
-// #define SERVO_FLAG_PIN 10
+#define SERVO_FLAG_PIN 10
 #define SERVO_IGNITE_PIN 11
-#define SERVO_DROP_PIN 10
 
 
 /*---------------State Definitions--------------------------*/
@@ -40,16 +39,18 @@
 /* More states to be added, enum limited to currently implemented states */
 typedef enum {
     STATE_START, STATE_ORIENT, STATE_LEFT1, STATE_FWD1, STATE_IGNITE, STATE_RIGHT1, STATE_FWD2, STATE_LEFT2, STATE_RIGHT2, 
-    STATE_BACK1, STATE_LOAD, STATE_FWD3, STATE_LEFT3, STATE_RIGHT3, STATE_FWD4, STATE_DROP, STATE_BACK2, STATE_DONE
-  } States_t;
+    STATE_BACK1, STATE_SHOOT, STATE_DONE
+} States_t;
   
 
 /*---------------Module Variables---------------------------*/
 States_t state;
 float us_f, us_b, us_r, us_l1, us_l2, us_l1l2_err;
-float timer_tmp; 
+float timer_tmp;
+unsigned long start_time = millis(); 
 
 bool command_sent = false;  // used to prevent repeated commands while in same state
+bool orient_done = false;
 
 // Initialize objects 
 Ultrasonic us_front(US_F_TRIG, US_F_ECHO);
@@ -67,9 +68,8 @@ struct i2c_payload {
 static i2c_payload tx_data; 
 
 // Initialize objects 
-// Payload p_flag(SERVO_FLAG_PIN);
+Payload p_flag(SERVO_FLAG_PIN);
 Payload p_ignite(SERVO_IGNITE_PIN);
-Payload p_drop(SERVO_DROP_PIN);
 
 
 /*---------------State and Helper Functions---------------------------*/
@@ -87,7 +87,6 @@ void command_slave(uint8_t task_id, uint8_t speed = 100, uint8_t kp1 = 1, uint8_
 void setup() {
     Wire.begin();  // start i2c bus as master 
     
-    // TO DO: write a robot/sensors class and handle ultrasonics within this 
     us_front.begin();  
     us_back.begin();
     us_left1.begin();
@@ -95,7 +94,7 @@ void setup() {
     us_right.begin();
 
     p_ignite.begin();
-    p_drop.begin();  
+    p_flag.begin();
   
     Serial.begin(9600);
 
@@ -105,7 +104,13 @@ void setup() {
 
 
 void loop() {
-    checkGlobalEvents();
+
+    if (orient_done) {
+      checkRoundTime();
+    } else {
+      checkGlobalEvents();
+    }
+
     switch (state) {
       case STATE_START:
           handle_start();
@@ -131,35 +136,16 @@ void loop() {
       case STATE_LEFT2:   // push pot to burner
           handle_left2();
           break; 
-/*---------------Start of states for continuous loop during round---------------------------*/
       case STATE_RIGHT2:  // right to far wall
           handle_right2(); 
           break;
       case STATE_BACK1: // backup to loading area
           handle_back1();
           break;
-      case STATE_LOAD:    // load balls
-          handle_load();
+      case STATE_SHOOT:    // load and shoot balls
+          handle_shoot();
           break;
-      case STATE_FWD3:   // fwd to clear kitchen and handles
-          handle_fwd3();
-          break;
-      case STATE_LEFT3:   // left to far wall
-          handle_left3();
-          break;
-      case STATE_RIGHT3:   // right a little bit to clear first handle
-          handle_right3();
-          break;
-      case STATE_FWD4:   // fwd to drop
-          handle_fwd4();
-          break;
-      case STATE_DROP:  // drop balls
-          handle_drop();
-          break; 
-      case STATE_BACK2:  // back up to clear handles and transition to right2 state
-          handle_back2();
-          break;
-      case STATE_DONE:
+      case STATE_DONE:  // enter when 2min time elapsed 
           handle_done();
           break;
       default:    
@@ -179,9 +165,17 @@ void checkGlobalEvents(void) {
     }
 }
 
+/* Check round timer */
+void checkRoundTime(void) {
+    unsigned long elapsed = millis() - start_time; 
+    if (elapsed > 130000)
+      state = STATE_DONE; 
+}
+
+
 // Initialize servos to correct positions
 void handle_start() {
-  p_drop.init_drop();
+  p_flag.raise_flag(); 
   p_ignite.init_ignite();
   state = STATE_ORIENT;
 }
@@ -197,6 +191,7 @@ void handle_orient () {
         command_slave(STOP);
         command_sent = false;
         state = STATE_LEFT1;
+        orient_done = true;
         delay(2000);
         return; // correctly oriented 
     }
@@ -350,126 +345,23 @@ void handle_back1() {
 
   command_slave(STOP);
   command_sent = false;
-  state = STATE_LOAD;
+  state = STATE_SHOOT;
   return;
 }
 
 
 /* load balls */
-void handle_load() {
-  delay(2000);
-  state = STATE_FWD3; 
-  return;
-}
-
-
-/* Fwd to clear kitchen and before handles */
-void handle_fwd3() {
-  if (command_sent == false) {
-    command_slave(RIGHT, 140);
-    timer_tmp = millis();
-    command_sent = true;
-  }
-
-  float elapsed = millis() - timer_tmp; 
-  if (elapsed < 750)
-    return;
-
-  command_slave(STOP);
-  command_sent = false;
-  state = STATE_LEFT3;
-  return;
-}
-
-
-/* left to far wall */
-void handle_left3() {
-    if (command_sent == false) {
-      command_slave(FORWARD, 180);
-      timer_tmp = millis();
-      command_sent = true;
-  }
-
-  float elapsed = millis() - timer_tmp; 
-  if (elapsed < 2500)
-    return;
-
-  command_slave(STOP);
-  command_sent = false;
-  state = STATE_RIGHT3;
-  return;
-}
-
-
-/* go right slightly to clear left handle before entering pot */
-void handle_right3() {
-    if (command_sent == false) {
-      command_slave(BACKWARD, 140);
-      timer_tmp = millis(); // record current time
-      command_sent = true;
-    }
-
-    float elapsed = millis() - timer_tmp;  // elapsed time in this state
-    if (elapsed < 170) 
-      return; 
-
-    command_slave(STOP);
-    command_sent = false;
-    state = STATE_FWD4; 
-    // delay(1000);
-    return;
-}
-
-
-/* fwd to enter pot */
-void handle_fwd4() {
-  if (command_sent == false) {
-    command_slave(RIGHT, 140);
-    timer_tmp = millis();
-    command_sent = true;
-}
-
-float elapsed = millis() - timer_tmp; 
-if (elapsed < 1200)
-  return;
-
-command_slave(STOP);
-command_sent = false;
-state = STATE_DROP;
-return;
-}
-
-
-/* drop balls */
-void handle_drop() {
-  delay(1000);
-  p_drop.release();
-  delay(1000);
-  state = STATE_BACK2;
-}
-
-
-/* backup to clear handle and before kitchen */
-void handle_back2() {
-  if (command_sent == false) {
-    command_slave(LEFT, 140);
-    timer_tmp = millis();
-    command_sent = true;
-  }
-
-  float elapsed = millis() - timer_tmp; 
-  if (elapsed < 1400)
-    return;
-
-  command_slave(STOP);
-  command_sent = false;
-  state = STATE_RIGHT2;
+void handle_shoot() {
+  // TO DO 
+  // set flywheel motor to high 
+  state = STATE_SHOOT;
   return;
 }
 
 
 /* done state */
 void handle_done() {
+  // set flywheel motor to off 
+  p_flag.lower_flag(); 
   state = STATE_DONE;
 }
-
