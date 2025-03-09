@@ -5,8 +5,9 @@ const int hallSensorPin = 2;  // Hall effect digital output
 
 volatile unsigned long lastTriggerTime = 0; // Stores last detection time
 volatile unsigned long hallInterval = 1000; // Time between hall triggers (in µs)
+const int stallRecover = 0;
 
-int pwmValue = 255;           // PWM output value
+int pwmValue = stallRecover;           // PWM output value
 float targetFrequency = 80;    // Target speed (Hz)
 float actualFrequency = 0;    // Measured frequency
 
@@ -39,7 +40,7 @@ void loop() {
     targetFrequency = map(potValue, 0, 1023, 30, 100); // Desired speed in Hz
     if (digitalRead(beginPin)) {
       if (hallInterval > 0 && currentMicros - lastTriggerTime > 200000) {  // .2 seconds without hall trigger
-            pwmValue = 200;
+            pwmValue = stallRecover;
       } else {
         // Convert hall interval to freq
         if (hallInterval > 0) {
