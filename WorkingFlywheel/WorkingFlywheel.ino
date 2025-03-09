@@ -27,10 +27,8 @@ void setup() {
     pinMode(beginPin, INPUT);
     pinMode(hallSensorPin, INPUT);
     Serial.begin(9600);
-    while (digitalRead(beginPin) == LOW) {
-      // Sit until we see signal voltage
-    }
     attachInterrupt(digitalPinToInterrupt(hallSensorPin), hallTriggered, FALLING);
+    analogWrite(pwmPin, 0);
 }
 
 void loop() {
@@ -56,7 +54,9 @@ void loop() {
         pwmValue += pwmFeedforward;
         pwmValue = constrain(pwmValue, 0, 255);
         previousError = error;
-      }  
+      }
+    } else {
+      pwmValue = 0;
     }
     analogWrite(pwmPin, pwmValue);
 }
