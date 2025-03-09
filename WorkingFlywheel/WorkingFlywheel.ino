@@ -27,7 +27,7 @@ void setup() {
     pinMode(beginPin, INPUT);
     pinMode(hallSensorPin, INPUT);
     Serial.begin(9600);
-    while (!digitalRead(beginPin)) {
+    while (digitalRead(beginPin) == LOW) {
       // Sit until we see signal voltage
     }
     attachInterrupt(digitalPinToInterrupt(hallSensorPin), hallTriggered, FALLING);
@@ -38,7 +38,7 @@ void loop() {
     
     int potValue = analogRead(potPin);
     targetFrequency = map(potValue, 0, 1023, 30, 100); // Desired speed in Hz
-    if (digitalRead(beginPin)) {
+    if (digitalRead(beginPin) == HIGH) {
       if (hallInterval > 0 && currentMicros - lastTriggerTime > 200000) {  // .2 seconds without hall trigger
             pwmValue = stallRecover;
       } else {
