@@ -19,4 +19,7 @@ class Payload {
         Payload(uint8_t servo_pin);
         void begin(); 
         void release();
+        void ignite();
+        void init_drop();
+        void init_ignite();
 };

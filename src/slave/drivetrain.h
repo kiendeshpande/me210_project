@@ -61,7 +61,7 @@ class Drivetrain {
         void backward(uint8_t speed = 100); 
         void left(uint8_t speed = 100); 
         void right(uint8_t speed = 100); 
-        void rot_cw(uint8_t speed = 100, uint8_t angle = 90);  // TO DO: fully implement rotation once chassis assembled 
-        void rot_ccw(uint8_t speed = 100, uint8_t angle = 90); // TO DO: fully implement rotation once chassis assembled
+        void rot_cw(uint8_t speed = 100);  
+        void rot_ccw(uint8_t speed = 100); 
         void stop(); 
 };
