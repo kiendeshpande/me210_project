@@ -5,7 +5,8 @@ const int hallSensorPin = 2;  // Hall effect digital output
 
 volatile unsigned long lastTriggerTime = 0; // Stores last detection time
 volatile unsigned long hallInterval = 1000; // Time between hall triggers (in µs)
-const int stallRecover = 0;
+const int stallRecover = 255;
+
 
 int pwmValue = stallRecover;           // PWM output value
 float targetFrequency = 80;    // Target speed (Hz)
@@ -33,10 +34,8 @@ void setup() {
 
 void loop() {
     unsigned long currentMicros = micros();
-    
-    int potValue = analogRead(potPin);
-    targetFrequency = map(potValue, 0, 1023, 30, 100); // Desired speed in Hz
-    if (digitalRead(beginPin) == HIGH) {
+    targetFrequency = 80;
+    if (digitalRead(beginPin)) {
       if (hallInterval > 0 && currentMicros - lastTriggerTime > 200000) {  // .2 seconds without hall trigger
             pwmValue = stallRecover;
       } else {
@@ -46,7 +45,6 @@ void loop() {
         } else { // catch division by 0
             actualFrequency = 0;
         }
-        
         float error = targetFrequency - actualFrequency;
         integral += error;
         pwmValue = Kp * error + Ki * integral;
@@ -58,6 +56,9 @@ void loop() {
     } else {
       pwmValue = 0;
     }
+    Serial.print(digitalRead(beginPin));
+    Serial.print("   ");
+    Serial.println(pwmValue);
     analogWrite(pwmPin, pwmValue);
 }
 
