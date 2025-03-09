@@ -24,11 +24,6 @@ float Ultrasonic::distance() {
 	delayMicroseconds(10);  // pin must be high for at least 10us to send pulse
 	digitalWrite(trigger_pin, LOW); 
 
-
-  // As far as Kien tested... the US sensor works with current code 
-  // but if we encounter US issues during integration we can consider the TO DOs below
-	// TO DO: test pulseIn() and pulseInLong() with/without interrupts on/off
-	// TO DO: test whether timeout should be used 
 	unsigned long duration = pulseIn(echo_pin, HIGH); 
 
   float distance = duration / 58.0; 

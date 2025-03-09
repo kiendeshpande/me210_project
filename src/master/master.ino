@@ -30,7 +30,6 @@
 #define SZ_DIR 38
 
 // Servo pinouts
-// #define SERVO_FLAG_PIN 10
 #define SERVO_IGNITE_PIN 11
 #define SERVO_DROP_PIN 10
 
@@ -40,7 +39,7 @@
 /* More states to be added, enum limited to currently implemented states */
 typedef enum {
     STATE_START, STATE_ORIENT, STATE_FWD_1, STATE_RIGHT, STATE_FWD_2, STATE_LEFT, STATE_BACKUP, STATE_LEFT2, STATE_IGNITE, STATE_RIGHT2, STATE_FWD_3, STATE_DROP, STATE_DONE
-  } States_t;
+ } States_t;
   
 
 /*---------------Module Variables---------------------------*/
@@ -66,7 +65,6 @@ struct i2c_payload {
 static i2c_payload tx_data; 
 
 // Initialize objects 
-// Payload p_flag(SERVO_FLAG_PIN);
 Payload p_ignite(SERVO_IGNITE_PIN);
 Payload p_drop(SERVO_DROP_PIN);
 
@@ -98,7 +96,6 @@ void setup() {
   
     Serial.begin(9600);
 
-    // state = STATE_ORIENT; 
     state = STATE_START;
 }
 
