@@ -84,14 +84,6 @@ void command_slave(uint8_t task_id, uint8_t speed = 100, uint8_t kp1 = 1, uint8_
 }
 
 
-Ultrasonic us_front(US_F_TRIG, US_F_ECHO);
-Ultrasonic us_back(US_B_TRIG, US_B_ECHO);
-Ultrasonic us_right(US_R_TRIG, US_R_ECHO);
-Ultrasonic us_left1(US_L1_TRIG, US_L1_ECHO);
-Ultrasonic us_left2(US_L2_TRIG, US_L2_ECHO);
-
-
-/*---------------Main Functions----------------------------*/
 void setup() {
     Wire.begin();  // start i2c bus as master 
     
@@ -107,7 +99,6 @@ void setup() {
   
     Serial.begin(9600);
 
-    // state = STATE_ORIENT; 
     state = STATE_START;
 }
 
@@ -217,45 +208,46 @@ void handle_orient () {
     return;
 }
 
-/* Push pot left across the course, onto the burner */
+/* Alight to left wall before igniting*/
 void handle_left1() {
   if (command_sent == false) {
     command_slave(FORWARD, 140);
     timer_tmp = millis();
     command_sent = true;
-}
+  }
 
-float elapsed = millis() - timer_tmp; 
-if (elapsed < 200)
-  return;
-
-command_slave(STOP);
-command_sent = false;
-state = STATE_FWD1;
-return;
-}
-
-
-/* Forward state to exit start zone and position next to igniter */
-void handle_fwd1() {
-    if (command_sent == false) {
-        // note the drivetrain movements conform to the prior direction convention
-        // this is where "forward" is the direction with the 2 ultrasonic sensors on one face
-        // TO DO: once beat-the-brick complete, fix nomenclature so drivetrain directions match convention in this file
-        command_slave(RIGHT, 140);  
-        command_sent = true;
-    }
-
-    if (us_f > 80) 
-      return; 
-
-    command_slave(STOP);
-    command_sent = false;
-    state = STATE_IGNITE;
+  float elapsed = millis() - timer_tmp; 
+  if (elapsed < 300)
     return;
+
+  command_slave(STOP);
+  command_sent = false;
+  state = STATE_FWD1;
+  delay(300);
+  return;
 }
 
 
+/* Alight bot with igniter and clear kitchen and handles*/
+void handle_fwd1() {
+  if (command_sent == false) {
+      command_slave(RIGHT, 140);
+      timer_tmp = millis();
+      command_sent = true;
+  }
+
+  float elapsed = millis() - timer_tmp; 
+  if (elapsed < 800) 
+    return; 
+
+  command_slave(STOP);
+  command_sent = false;
+  state = STATE_IGNITE; 
+  return;
+}
+
+
+/* Hit igniter*/
 void handle_ignite() {
   command_slave(STOP);
   delay(1000);
@@ -284,7 +276,8 @@ void handle_right1() {
     return;
 }
 
-/* Align robot with far wall prior to pushing the pot */
+
+/* Fwd to wall to set up pot pushing */
 void handle_fwd2() {
   if (command_sent == false) {
       command_slave(RIGHT, 140);
@@ -301,6 +294,7 @@ void handle_fwd2() {
   state = STATE_LEFT2; 
   return;
 }
+
 
 /* Push pot left across the course, onto the burner */
 void handle_left2() {
@@ -331,7 +325,7 @@ void handle_right2() {
   }
 
   float elapsed = millis() - timer_tmp;  // elapsed time in this state
-  if (elapsed < 2000) 
+  if (elapsed < 1800) 
     return; 
 
   command_slave(STOP);
@@ -341,6 +335,8 @@ void handle_right2() {
   return;
 }
 
+
+/* Backup to load balls */
 void handle_back1() {
     if (command_sent == false) {
       command_slave(LEFT, 140);
@@ -359,6 +355,7 @@ void handle_back1() {
 }
 
 
+/* load balls */
 void handle_load() {
   delay(2000);
   state = STATE_FWD3; 
@@ -366,6 +363,7 @@ void handle_load() {
 }
 
 
+/* Fwd to clear kitchen and before handles */
 void handle_fwd3() {
   if (command_sent == false) {
     command_slave(RIGHT, 140);
@@ -374,7 +372,7 @@ void handle_fwd3() {
   }
 
   float elapsed = millis() - timer_tmp; 
-  if (elapsed < 1200)
+  if (elapsed < 750)
     return;
 
   command_slave(STOP);
@@ -384,15 +382,16 @@ void handle_fwd3() {
 }
 
 
+/* left to far wall */
 void handle_left3() {
     if (command_sent == false) {
-      command_slave(FORWARD, 140);
+      command_slave(FORWARD, 180);
       timer_tmp = millis();
       command_sent = true;
   }
 
   float elapsed = millis() - timer_tmp; 
-  if (elapsed < 3000)
+  if (elapsed < 2500)
     return;
 
   command_slave(STOP);
@@ -402,6 +401,7 @@ void handle_left3() {
 }
 
 
+/* go right slightly to clear left handle before entering pot */
 void handle_right3() {
     if (command_sent == false) {
       command_slave(BACKWARD, 140);
@@ -421,6 +421,7 @@ void handle_right3() {
 }
 
 
+/* fwd to enter pot */
 void handle_fwd4() {
   if (command_sent == false) {
     command_slave(RIGHT, 140);
@@ -439,6 +440,7 @@ return;
 }
 
 
+/* drop balls */
 void handle_drop() {
   delay(1000);
   p_drop.release();
@@ -447,6 +449,7 @@ void handle_drop() {
 }
 
 
+/* backup to clear handle and before kitchen */
 void handle_back2() {
   if (command_sent == false) {
     command_slave(LEFT, 140);
@@ -465,181 +468,8 @@ void handle_back2() {
 }
 
 
+/* done state */
 void handle_done() {
   state = STATE_DONE;
 }
 
-// Handler for when bot is moving fwd out of start zone 
-void handleFwd1(void) {
-    // Move fwd
-    if (!command_sent) {
-        command_slave(LEFT, 120); 
-        command_sent = true;
-    }
-    // Check distance
-    if (us_f < 10) {       // TODO: calibrate distance on course
-        state = STATE_RIGHT;
-        command_slave(STOP);
-    }
-}
-
-
-// Handler for when bot is moving right along the kitchen 
-// and searching for right wall or IR beacon
-void handleRight(void) {
-    // Move right
-    if (!command_sent) {
-        command_slave(RIGHT, 180); 
-        command_sent = true;
-    }
-    // Check distance
-    if (us_r < 5) {       // TODO: calibrate distance on course
-        state = STATE_FWD_2;
-        command_slave(STOP);
-    } 
-    // Check beacon
-    if (IR_value > BEACON_THRESHOLD) {
-        beacon_sensed = true;
-        state = STATE_FWD_2;
-        command_slave(STOP);  
-    }
-}   
-
-
-// Handler for when bot is moving fwd to push pot
-void handleFwd2(void) {
-    // Move forward
-    if (!command_sent) {
-        command_slave(FORWARD, 180); 
-        command_sent = true;
-    }
-    // Check distance
-    if (us_f < 7) {       // TODO: calibrate distance on course
-        if (beacon_sensed) {
-            state = STATE_INSIDE_LEFT;
-            beacon_sensed = false;
-        } else {
-            state = STATE_OUTSIDE_LEFT_1;
-        }
-        command_slave(STOP);
-    }
-}
-
-
-// Handler for when bot is pushing pot INSIDE the handles,
-// sensing left wall will be closer than when outside handles
-void handleInsideLeft(void) {
-    // Move left
-    if (!command_sent) {
-        command_slave(LEFT, 180); 
-        command_sent = true;
-    }
-    // Check distance
-    if (us_l1 < 7) {        // TODO: calibrate distance on course
-        state = STATE_INSIDE_BACK;
-        command_slave(STOP);
-    }
-}  
-
-
-// Handler for when bot is pushing pot OUTSIDE the handles,
-// sensing left wall will be further than when inside handles
-void handleOutsideLeft1(void) {
-    // Move left
-    if (!command_sent) {
-        command_slave(LEFT, 180); 
-        command_sent = true;
-    }
-    // Check distance
-    if (us_l1 < 13) {       // TODO: calibrate distance on course
-        state = STATE_OUTSIDE_BACK;
-        command_slave(STOP);
-    }
-} 
-
-
-// Handler for when bot is backing out of handles
-void handleInsideBack(void) {
-    // Move backwards
-    if (!command_sent) {
-        command_slave(BACKWARD, 180); 
-        command_sent = true;
-    }
-    // Check distance
-    if (us_f > 13) {        // TODO: calibrate distance on course
-        state = STATE_IGNITE;
-        command_slave(STOP);
-    }
-}  
-
-
-// Handler for when bot is backing up when outside of handles
-void handleOutsideBack(void) {
-    // Move backwards
-    if (!command_sent) {
-        command_slave(BACKWARD, 180); 
-        command_sent = true;
-    }
-    // Check distance
-    if (us_f > 13) {        // TODO: calibrate distance on course
-        state = STATE_OUTSIDE_LEFT_2;
-        command_slave(STOP);
-    }
-}  
-
-
-// Handler for when bot is going left to ignite
-void handleOutsideLeft2(void) {
-    // Move left
-    if (!command_sent) {
-        command_slave(LEFT, 180); 
-        command_sent = true;
-    }
-    // Check distance
-    if (us_l1 < 7) {       // TODO: calibrate distance on course
-        state = STATE_IGNITE;
-        command_slave(STOP);
-    }
-} 
-
-
-// Handler for pushing ignite button
-void handleIgnite(void) {
-    // TODO: Implement servo action
-    // Blocking code is probably fine here
-    p_ignite.release(); // TODO: configure servo to hit igniter
-    // TODO: add state transition
-} 
-
-
-// Handler for when bot is moving fwd to drop ball into pot
-void handleFwd3(void) {
-    // Move forward
-    if (!command_sent) {
-        command_slave(FORWARD, 180); 
-        command_sent = true;
-    }
-    // Check distance
-    if (us_f < 7) {       // TODO: calibrate distance on course
-        state = STATE_DROP;
-        command_slave(STOP);
-    }
-}
-
-
-// Handler for dropping ingredient into pot
-void handleDrop(void) {
-    // TODO: Implement servo action
-    // Blocking code is probably fine here
-    p_drop.release(); // TODO: configure servo to release ingredient
-    // TODO: add state transition
-}
-
-
-// Handler for round over
-void handleRoundOver(void) {
-    // TODO: Implement servo action
-    // Blocking code is probably fine here
-    command_slave(STOP); 
-    p_flag.release();   // TODO: servo to raise flag for round end
-}
