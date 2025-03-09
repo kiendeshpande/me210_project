@@ -33,6 +33,8 @@
 #define SERVO_FLAG_PIN 10
 #define SERVO_IGNITE_PIN 11
 
+#define FLYWHEEL_PIN A2
+
 
 /*---------------State Definitions--------------------------*/
 
@@ -95,7 +97,10 @@ void setup() {
 
     p_ignite.begin();
     p_flag.begin();
-  
+
+    pinMode(FLYWHEEL_PIN, OUTPUT); 
+    digitalWrite(FLYWHEEL_PIN, LOW);
+
     Serial.begin(9600);
 
     state = STATE_START;
@@ -377,6 +382,7 @@ void handle_right3() {
 void handle_shoot() {
   // TO DO 
   // set flywheel motor to high 
+  digitalWrite(FLYWHEEL_PIN, HIGH);
   state = STATE_SHOOT;
   return;
 }
@@ -385,6 +391,7 @@ void handle_shoot() {
 /* done state */
 void handle_done() {
   // set flywheel motor to off 
+  digitalWrite(FLYWHEEL_PIN, LOW);
   p_flag.lower_flag(); 
   state = STATE_DONE;
 }
