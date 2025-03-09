@@ -17,7 +17,7 @@ void Payload::begin() {
 /* Opens and closes servo to release ingredients from payload. */
 void Payload::ignite() {
     servo.write(180); 
-    delay(1000); 
+    delay(200); 
     servo.write(70); 
 }
 

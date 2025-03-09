@@ -39,7 +39,7 @@
 /* More states to be added, enum limited to currently implemented states */
 typedef enum {
     STATE_START, STATE_ORIENT, STATE_LEFT1, STATE_FWD1, STATE_IGNITE, STATE_RIGHT1, STATE_FWD2, STATE_LEFT2, STATE_RIGHT2, 
-    STATE_BACK1, STATE_SHOOT, STATE_DONE
+    STATE_BACK1, STATE_SHOOT, STATE_DONE, STATE_RIGHT3
 } States_t;
   
 
@@ -142,6 +142,9 @@ void loop() {
       case STATE_BACK1: // backup to loading area
           handle_back1();
           break;
+      case STATE_RIGHT3:  // right to far wall
+          handle_right3(); 
+          break;
       case STATE_SHOOT:    // load and shoot balls
           handle_shoot();
           break;
@@ -192,12 +195,12 @@ void handle_orient () {
         command_sent = false;
         state = STATE_LEFT1;
         orient_done = true;
-        delay(2000);
+        delay(200);
         return; // correctly oriented 
     }
 
     if (command_sent == false) {   
-        command_slave(ROT_CCW, 90); 
+        command_slave(ROT_CCW, 100); //Orig 90
         command_sent = true; 
     }
     return;
@@ -232,7 +235,7 @@ void handle_fwd1() {
   }
 
   float elapsed = millis() - timer_tmp; 
-  if (elapsed < 800) 
+  if (elapsed < 700) 
     return; 
 
   command_slave(STOP);
@@ -245,9 +248,9 @@ void handle_fwd1() {
 /* Hit igniter*/
 void handle_ignite() {
   command_slave(STOP);
-  delay(1000);
+  // delay(100);
   p_ignite.ignite();
-  delay(1000);
+  delay(200);
   state = STATE_RIGHT1;
 }
 
@@ -306,6 +309,7 @@ void handle_left2() {
   command_slave(STOP);
   command_sent = false;
   state = STATE_RIGHT2;
+  delay(200);
   return;
 }
 
@@ -326,7 +330,7 @@ void handle_right2() {
   command_slave(STOP);
   command_sent = false;
   state = STATE_BACK1; 
-  delay(1000);
+  delay(200);
   return;
 }
 
@@ -340,12 +344,31 @@ void handle_back1() {
   }
 
   float elapsed = millis() - timer_tmp; 
-  if (elapsed < 1400)
+  if (elapsed < 1500)
     return;
 
   command_slave(STOP);
   command_sent = false;
-  state = STATE_SHOOT;
+  state = STATE_RIGHT3;
+  return;
+}
+
+
+// go back to right wall
+void handle_right3() {
+  if (command_sent == false) {
+    command_slave(BACKWARD, 140);
+    timer_tmp = millis(); // record current time
+    command_sent = true;
+  }
+
+  float elapsed = millis() - timer_tmp;  // elapsed time in this state
+  if (elapsed < 300) 
+    return; 
+
+  command_slave(STOP);
+  command_sent = false;
+  state = STATE_SHOOT; 
   return;
 }
 
